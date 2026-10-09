@@ -1,7 +1,11 @@
 package com.monse.coinoptimize.data
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "movimientos")
 data class Movimiento(
-    val id: String,
+    @PrimaryKey val id: String,
     val concepto: String,
     val monto: Double,
     val tipo: TipoMovimiento,
