@@ -61,7 +61,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         get() = movimientos.size
 
     // --- ACCIONES ---
-    fun agregarMovimiento(concepto: String, monto: Double, tipo: TipoMovimiento, cuentaId: String) {
+    fun agregarMovimiento(
+        concepto: String, 
+        monto: Double, 
+        tipo: TipoMovimiento, 
+        cuentaId: String,
+        esFijo: Boolean = false
+    ) {
         viewModelScope.launch {
             val nuevoMovimiento = Movimiento(
                 id = UUID.randomUUID().toString(),
@@ -70,7 +76,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 tipo = tipo,
                 fecha = "OCT 2026",
                 cuentaId = cuentaId,
-                esFijo = false
+                esFijo = esFijo
             )
             dao.insertarMovimiento(nuevoMovimiento)
         }
