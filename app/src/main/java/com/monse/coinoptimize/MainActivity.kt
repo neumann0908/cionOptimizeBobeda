@@ -266,7 +266,7 @@ fun TopHeaderBar(seccionActual: String) {
                     .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "OCT 2026",
+                    text = if (seccionActual == "AHORROS") "METAS Y PROGRESO" else "OCT 2026",
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -818,13 +818,11 @@ fun ListaMovimientosSub(
     }
 }
 
-// --- PANTALLA BALANCES FIDELIDAD 100% REFERENCIA ---
 @Composable
 fun PantallaBalancesContent(
     viewModel: MainViewModel,
     onAbrirTransferencia: () -> Unit
 ) {
-    // 1. Selector SEMANAL / MENSUAL
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -863,7 +861,6 @@ fun PantallaBalancesContent(
         }
     }
 
-    // 2. Navegador de Periodo
     NeoBrutalCard {
         Row(
             modifier = Modifier
@@ -899,7 +896,6 @@ fun PantallaBalancesContent(
         }
     }
 
-    // 3. Tarjetas de Resumen Superior
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -930,13 +926,11 @@ fun PantallaBalancesContent(
         )
     }
 
-    // 4. Gráfico Ingresos vs Gastos
     GraficoIngresosVsGastosCard(
         ingresos = viewModel.totalIngresosMes,
         gastos = viewModel.totalGastosMes
     )
 
-    // 5. Desglose por Categoría
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -964,7 +958,6 @@ fun PantallaBalancesContent(
     TarjetaCategoriaBarra(titulo = "CUENTAS POR PAGAR", monto = deudasTotales, porcentaje = if (deudasTotales > 0) 100 else 0)
     TarjetaCategoriaBarra(titulo = "PAGOS FIJOS", monto = pagosFijosTotales, porcentaje = if (pagosFijosTotales > 0) 100 else 0)
 
-    // 6. Gráfico Tendencia 6 Meses
     GraficoTendencia6MesesCard()
 }
 
@@ -1136,12 +1129,49 @@ fun GraficoTendencia6MesesCard() {
     }
 }
 
+// --- PANTALLA AHORROS FIDELIDAD 100% REFERENCIA ---
 @Composable
 fun PantallaAhorrosContent(
     viewModel: MainViewModel,
     onCrearMeta: () -> Unit,
     onAbonar: (MetaAhorro) -> Unit
 ) {
+    val totalAhorrado = viewModel.metasAhorro.sumOf { it.montoActual }
+    val completadas = viewModel.metasAhorro.count { it.montoObjetivo > 0 && it.montoActual >= it.montoObjetivo }
+    val activas = viewModel.metasAhorro.count { it.montoObjetivo > 0 && it.montoActual < it.montoObjetivo }
+
+    // 1. Tres tarjetas de resumen superiores
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        MetricMiniCard(
+            modifier = Modifier.weight(1f),
+            title = "TOTAL AHORRADO",
+            value = "$${String.format("%.2f", totalAhorrado)}",
+            icon = Icons.Default.AccountBalanceWallet,
+            iconBg = ColorPrimaryRed,
+            iconTint = Color.White
+        )
+        MetricMiniCard(
+            modifier = Modifier.weight(1f),
+            title = "COMPLETADAS",
+            value = "$completadas",
+            icon = Icons.Default.Adjust,
+            iconBg = Color(0xFF2E7D32),
+            iconTint = Color.White
+        )
+        MetricMiniCard(
+            modifier = Modifier.weight(1f),
+            title = "ACTIVAS",
+            value = "$activas",
+            icon = Icons.Default.TrendingUp,
+            iconBg = ColorGreyIconBox,
+            iconTint = ColorTextDark
+        )
+    }
+
+    // 2. Encabezado de la sección y botón de acción
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1149,7 +1179,7 @@ fun PantallaAhorrosContent(
     ) {
         Text(
             text = "METAS DE AHORRO",
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Black,
             color = ColorTextDark
         )
@@ -1166,6 +1196,7 @@ fun PantallaAhorrosContent(
         }
     }
 
+    // 3. Contenido de las metas (vacio o lista)
     if (viewModel.metasAhorro.isEmpty()) {
         DashedContainer {
             Column(
@@ -1177,7 +1208,7 @@ fun PantallaAhorrosContent(
                 IconBox3D(
                     icon = Icons.Default.Savings,
                     size = 54.dp,
-                    iconSize = 32.dp
+                    iconSize = 30.dp
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -1193,6 +1224,18 @@ fun PantallaAhorrosContent(
                     color = ColorTextMuted,
                     textAlign = TextAlign.Center
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                NeoBrutalButton(
+                    containerColor = ColorPrimaryRed,
+                    contentColor = Color.White,
+                    onClick = onCrearMeta
+                ) {
+                    Text(
+                        text = "CREAR META",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     } else {
