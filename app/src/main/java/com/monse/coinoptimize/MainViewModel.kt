@@ -1,7 +1,10 @@
 package com.monse.coinoptimize
 
 import android.app.Application
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.monse.coinoptimize.data.*
@@ -16,8 +19,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val movimientos = mutableStateListOf<Movimiento>()
     val metasAhorro = mutableStateListOf<MetaAhorro>()
 
+    // Presupuesto mensual configurable
+    var presupuestoMensual by mutableStateOf(0.0)
+
     init {
-        // Escuchar Cuentas desde SQLite
         viewModelScope.launch {
             dao.obtenerTodasLasCuentas().collect { listaCuentas ->
                 cuentas.clear()
@@ -34,7 +39,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Escuchar Movimientos desde SQLite
         viewModelScope.launch {
             dao.obtenerTodosLosMovimientos().collect { listaMovimientos ->
                 movimientos.clear()
@@ -42,7 +46,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Escuchar Metas de Ahorro desde SQLite
         viewModelScope.launch {
             dao.obtenerTodasLasMetas().collect { listaMetas ->
                 metasAhorro.clear()
@@ -61,7 +64,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // CÁLCULOS
     val balanceNeto: Double
         get() = cuentas.sumOf { obtenerSaldoRealCuenta(it) }
 
@@ -80,7 +82,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val cantidadRegistros: Int
         get() = movimientos.size
 
-    // ACCIONES DE MOVIMIENTOS
     fun agregarMovimiento(
         concepto: String, 
         monto: Double, 
@@ -127,7 +128,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ACCIONES DE METAS DE AHORRO
     fun agregarMetaAhorro(titulo: String, montoObjetivo: Double) {
         viewModelScope.launch {
             val nuevaMeta = MetaAhorro(
@@ -140,12 +140,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun editarMeta(metaActualizada: MetaAhorro) {
+        viewModelScope.launch {
+            dao.insertarMeta(metaActualizada)
+        }
+    }
+
     fun abonarAMeta(meta: MetaAhorro, montoAbono: Double, cuentaId: String) {
         if (montoAbono <= 0) return
         viewModelScope.launch {
             val metaActualizada = meta.copy(montoActual = meta.montoActual + montoAbono)
             dao.insertarMeta(metaActualizada)
-            // Registrar como salida/gasto hacia el ahorro
             agregarMovimiento("Abono a Meta: ${meta.titulo}", montoAbono, TipoMovimiento.GASTO, cuentaId)
         }
     }
@@ -154,5 +159,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             dao.eliminarMeta(meta)
         }
+    }
+
+    fun actualizarPresupuesto(nuevoPresupuesto: Double) {
+        presupuestoMensual = nuevoPresupuesto
     }
 }
