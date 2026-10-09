@@ -66,19 +66,17 @@ val ColorTextMuted = Color(0xFF666666)
 fun CajaFuerteMainScreen(viewModel: MainViewModel) {
     var seccionSeleccionada by remember { mutableStateOf("INICIO") }
     
-    // ESTADOS PARA EL FORMULARIO
     var mostrarFormulario by remember { mutableStateOf(false) }
     var tipoMovimientoForm by remember { mutableStateOf(TipoMovimiento.INGRESO) }
+    var mostrarTransferencia by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = ColorScreenBg
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // 1. HEADER SUPERIOR OSCURO
             TopHeaderBar(seccionActual = seccionSeleccionada)
 
-            // 2. CONTENIDO SCROLLABLE
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -101,18 +99,20 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                             mostrarFormulario = true
                         }
                     )
+                    "BALANCES" -> PantallaBalancesContent(
+                        viewModel = viewModel,
+                        onAbrirTransferencia = { mostrarTransferencia = true }
+                    )
                     else -> PantallaProximamenteContent(seccionSeleccionada)
                 }
             }
 
-            // 3. BARRA DE NAVEGACIÓN INFERIOR
             BottomNavigationBar(
                 seccionActual = seccionSeleccionada,
                 onSeccionSelected = { seccionSeleccionada = it }
             )
         }
 
-        // DIÁLOGO / FORMULARIO INTERACTIVO
         if (mostrarFormulario) {
             FormularioMovimientoDialog(
                 tipo = tipoMovimientoForm,
@@ -123,10 +123,19 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                 }
             )
         }
+
+        if (mostrarTransferencia) {
+            FormularioTransferenciaDialog(
+                cuentas = viewModel.cuentas,
+                onDismiss = { mostrarTransferencia = false },
+                onTransferir = { origenId, destinoId, monto ->
+                    viewModel.realizarTransferencia(origenId, destinoId, monto)
+                }
+            )
+        }
     }
 }
 
-// --- HEADER SUPERIOR ---
 @Composable
 fun TopHeaderBar(seccionActual: String) {
     Row(
@@ -209,7 +218,7 @@ fun TopHeaderBar(seccionActual: String) {
     }
 }
 
-// --- CONTENIDO PANTALLA INICIO ---
+// --- PANTALLA INICIO ---
 @Composable
 fun PantallaInicioContent(
     viewModel: MainViewModel,
@@ -399,7 +408,7 @@ fun PantallaInicioContent(
     }
 }
 
-// --- CONTENIDO PANTALLA MOVIMIENTOS ---
+// --- PANTALLA MOVIMIENTOS ---
 @Composable
 fun PantallaMovimientosContent(
     viewModel: MainViewModel,
@@ -493,7 +502,229 @@ fun PantallaMovimientosContent(
     }
 }
 
-// --- FORMULARIO EMERGENTE NEO-BRUTALISTA ACTUALIZADO CON SELECTOR DE RECURRENCIA ---
+// --- PANTALLA BALANCES (NUEVA) ---
+@Composable
+fun PantallaBalancesContent(
+    viewModel: MainViewModel,
+    onAbrirTransferencia: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "BÓVEDAS Y CUENTAS",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Black,
+            color = ColorTextDark
+        )
+        NeoBrutalButton(
+            containerColor = ColorHeaderBg,
+            contentColor = Color.White,
+            onClick = onAbrirTransferencia
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CompareArrows, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("TRANSFERIR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+
+    val totalGlobal = viewModel.balanceNeto
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        viewModel.cuentas.forEach { cuenta ->
+            val saldoReal = viewModel.obtenerSaldoRealCuenta(cuenta)
+            val porcentaje = if (totalGlobal > 0) (saldoReal / totalGlobal) * 100 else 0.0
+
+            NeoBrutalCard {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconBox3D(
+                                icon = when (cuenta.tipo) {
+                                    com.monse.coinoptimize.data.TipoCuenta.EFECTIVO -> Icons.Default.Payments
+                                    com.monse.coinoptimize.data.TipoCuenta.BANCO -> Icons.Default.AccountBalance
+                                    com.monse.coinoptimize.data.TipoCuenta.AHORRO -> Icons.Default.Lock
+                                },
+                                size = 36.dp,
+                                iconSize = 20.dp
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = cuenta.nombre,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ColorTextDark
+                                )
+                                Text(
+                                    text = "${String.format("%.1f", porcentaje)}% del total",
+                                    fontSize = 10.sp,
+                                    color = ColorTextMuted
+                                )
+                            }
+                        }
+                        Text(
+                            text = "$${String.format("%.2f", saldoReal)}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black,
+                            color = ColorTextDark
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Barra visual de porcentaje estilo neo-brutalista
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .background(Color(0xFFE0E0E0))
+                            .border(1.dp, ColorBorderBlack)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(fraction = (porcentaje / 100).toFloat().coerceIn(0f, 1f))
+                                .background(ColorPrimaryRed)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- DIÁLOGO DE TRANSFERENCIA ---
+@Composable
+fun FormularioTransferenciaDialog(
+    cuentas: List<Cuenta>,
+    onDismiss: () -> Unit,
+    onTransferir: (origenId: String, destinoId: String, monto: Double) -> Unit
+) {
+    var origenId by remember { mutableStateOf(cuentas.firstOrNull()?.id ?: "1") }
+    var destinoId by remember { mutableStateOf(cuentas.getOrNull(1)?.id ?: "2") }
+    var montoText by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .offset(x = 6.dp, y = 6.dp)
+                    .background(ColorBorderBlack)
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ColorScreenBg)
+                    .border(3.dp, ColorBorderBlack)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "TRANSFERIR FONDOS",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    color = ColorTextDark
+                )
+
+                // CUENTA ORIGEN
+                Text("DESDE (ORIGEN):", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    cuentas.forEach { c ->
+                        val sel = c.id == origenId
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(if (sel) ColorPrimaryRed else Color.White)
+                                .border(1.5.dp, ColorBorderBlack)
+                                .clickable { origenId = c.id }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else ColorTextDark)
+                        }
+                    }
+                }
+
+                // CUENTA DESTINO
+                Text("HACIA (DESTINO):", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    cuentas.forEach { c ->
+                        val sel = c.id == destinoId
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(if (sel) ColorHeaderBg else Color.White)
+                                .border(1.5.dp, ColorBorderBlack)
+                                .clickable { destinoId = c.id }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else ColorTextDark)
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = montoText,
+                    onValueChange = { montoText = it },
+                    label = { Text("Monto a transferir ($)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ColorBorderBlack,
+                        unfocusedBorderColor = ColorBorderBlack,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    NeoBrutalButton(
+                        modifier = Modifier.weight(1f),
+                        containerColor = Color.White,
+                        contentColor = ColorTextDark,
+                        onClick = onDismiss
+                    ) {
+                        Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    NeoBrutalButton(
+                        modifier = Modifier.weight(1f),
+                        containerColor = ColorPrimaryRed,
+                        contentColor = Color.White,
+                        onClick = {
+                            val monto = montoText.toDoubleOrNull() ?: 0.0
+                            if (monto > 0 && origenId != destinoId) {
+                                onTransferir(origenId, destinoId, monto)
+                                onDismiss()
+                            }
+                        }
+                    ) {
+                        Text("TRANSFERIR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- FORMULARIO MOVIMIENTO ---
 @Composable
 fun FormularioMovimientoDialog(
     tipo: TipoMovimiento,
@@ -533,7 +764,6 @@ fun FormularioMovimientoDialog(
                     letterSpacing = 0.5.sp
                 )
 
-                // Campo Concepto
                 OutlinedTextField(
                     value = concepto,
                     onValueChange = { concepto = it },
@@ -548,7 +778,6 @@ fun FormularioMovimientoDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Campo Monto
                 OutlinedTextField(
                     value = montoText,
                     onValueChange = { montoText = it },
@@ -564,7 +793,6 @@ fun FormularioMovimientoDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // SELECTOR DE FRECUENCIA (EXTRA vs FIJO/SEMANAL)
                 Text(
                     text = "TIPO DE TRANSACCIÓN:",
                     fontSize = 11.sp,
@@ -610,7 +838,6 @@ fun FormularioMovimientoDialog(
                     }
                 }
 
-                // Selector de Cuenta
                 Text(
                     text = "SELECCIONA CUENTA:",
                     fontSize = 11.sp,
@@ -645,7 +872,6 @@ fun FormularioMovimientoDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Botones Cancelar / Guardar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -679,7 +905,6 @@ fun FormularioMovimientoDialog(
     }
 }
 
-// --- TARJETA CON ETIQUETA [FIJO] / [EXTRA] ---
 @Composable
 fun ItemMovimientoCard(movimiento: Movimiento) {
     val esIngreso = movimiento.tipo == TipoMovimiento.INGRESO
@@ -764,7 +989,7 @@ fun PantallaProximamenteContent(seccion: String) {
     }
 }
 
-// --- COMPONENTES NEO-BRUTALISTAS ---
+// --- COMPONENTES BASE ---
 @Composable
 fun NeoBrutalCard(
     modifier: Modifier = Modifier,
@@ -898,7 +1123,6 @@ fun DashedContainer(
     }
 }
 
-// --- BARRA DE NAVEGACIÓN INFERIOR ---
 @Composable
 fun BottomNavigationBar(
     seccionActual: String,
