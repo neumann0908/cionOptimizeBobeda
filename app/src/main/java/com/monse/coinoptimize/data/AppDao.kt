@@ -27,4 +27,14 @@ interface AppDao {
 
     @Delete
     suspend fun eliminarMovimiento(movimiento: Movimiento)
+
+    // METAS DE AHORRO
+    @Query("SELECT * FROM metas_ahorro")
+    fun obtenerTodasLasMetas(): Flow<List<MetaAhorro>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertarMeta(meta: MetaAhorro)
+
+    @Delete
+    suspend fun eliminarMeta(meta: MetaAhorro)
 }
