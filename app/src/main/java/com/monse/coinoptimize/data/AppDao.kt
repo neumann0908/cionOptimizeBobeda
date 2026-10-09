@@ -15,10 +15,16 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertarCuentas(cuentas: List<Cuenta>)
 
+    @Update
+    suspend fun actualizarCuenta(cuenta: Cuenta)
+
     // MOVIMIENTOS
     @Query("SELECT * FROM movimientos ORDER BY id DESC")
     fun obtenerTodosLosMovimientos(): Flow<List<Movimiento>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertarMovimiento(movimiento: Movimiento)
+
+    @Delete
+    suspend fun eliminarMovimiento(movimiento: Movimiento)
 }
