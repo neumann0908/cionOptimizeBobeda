@@ -18,9 +18,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val cuentas = mutableStateListOf<Cuenta>()
     val movimientos = mutableStateListOf<Movimiento>()
     val metasAhorro = mutableStateListOf<MetaAhorro>()
+    val cuentasPorPagar = mutableStateListOf<CuentaPorPagar>()
 
-    // Presupuesto mensual configurable
     var presupuestoMensual by mutableStateOf(0.0)
+    var modoBalances by mutableStateOf("MENSUAL") // "SEMANAL" o "MENSUAL"
+    var periodoActual by mutableStateOf("OCT 2026")
 
     init {
         viewModelScope.launch {
@@ -50,16 +52,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             dao.obtenerTodasLasMetas().collect { listaMetas ->
                 metasAhorro.clear()
                 if (listaMetas.isEmpty()) {
-                    val metaInicial = MetaAhorro(
-                        id = UUID.randomUUID().toString(),
-                        titulo = "FONDO DE EMERGENCIA",
-                        montoObjetivo = 1000.0,
-                        montoActual = 250.0
-                    )
-                    dao.insertarMeta(metaInicial)
+                    dao.insertarMeta(MetaAhorro(UUID.randomUUID().toString(), "FONDO DE EMERGENCIA", 1000.0, 250.0))
                 } else {
                     metasAhorro.addAll(listaMetas)
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            dao.obtenerCuentasPorPagar().collect { listaDeudas ->
+                cuentasPorPagar.clear()
+                cuentasPorPagar.addAll(listaDeudas)
             }
         }
     }
@@ -79,40 +82,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val totalGastosMes: Double
         get() = movimientos.filter { it.tipo == TipoMovimiento.GASTO }.sumOf { it.monto }
 
-    val cantidadRegistros: Int
-        get() = movimientos.size
+    val totalDeudasPendientes: Double
+        get() = cuentasPorPagar.sumOf { it.saldoPendiente }
 
-    fun agregarMovimiento(
-        concepto: String, 
-        monto: Double, 
-        tipo: TipoMovimiento, 
-        cuentaId: String,
-        esFijo: Boolean = false
-    ) {
+    fun agregarMovimiento(concepto: String, monto: Double, tipo: TipoMovimiento, cuentaId: String, esFijo: Boolean = false) {
         viewModelScope.launch {
-            val nuevoMovimiento = Movimiento(
+            val nuevo = Movimiento(
                 id = UUID.randomUUID().toString(),
                 concepto = concepto.ifBlank { "Sin descripción" },
                 monto = monto,
                 tipo = tipo,
-                fecha = "OCT 2026",
+                fecha = periodoActual,
                 cuentaId = cuentaId,
                 esFijo = esFijo
             )
-            dao.insertarMovimiento(nuevoMovimiento)
+            dao.insertarMovimiento(nuevo)
         }
     }
 
-    fun editarMovimiento(movimientoActualizado: Movimiento) {
-        viewModelScope.launch {
-            dao.insertarMovimiento(movimientoActualizado)
-        }
+    fun editarMovimiento(mov: Movimiento) {
+        viewModelScope.launch { dao.insertarMovimiento(mov) }
     }
 
-    fun eliminarMovimiento(movimiento: Movimiento) {
-        viewModelScope.launch {
-            dao.eliminarMovimiento(movimiento)
-        }
+    fun eliminarMovimiento(mov: Movimiento) {
+        viewModelScope.launch { dao.eliminarMovimiento(mov) }
     }
 
     fun realizarTransferencia(origenId: String, destinoId: String, monto: Double) {
@@ -120,7 +113,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val origen = cuentas.find { it.id == origenId }
             val destino = cuentas.find { it.id == destinoId }
-
             if (origen != null && destino != null) {
                 agregarMovimiento("Transferencia a ${destino.nombre}", monto, TipoMovimiento.GASTO, origenId)
                 agregarMovimiento("Transferencia desde ${origen.nombre}", monto, TipoMovimiento.INGRESO, destinoId)
@@ -128,40 +120,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun agregarMetaAhorro(titulo: String, montoObjetivo: Double) {
+    fun agregarCuentaPorPagar(titulo: String, monto: Double, vencimiento: String) {
         viewModelScope.launch {
-            val nuevaMeta = MetaAhorro(
+            val nueva = CuentaPorPagar(
                 id = UUID.randomUUID().toString(),
-                titulo = titulo.ifBlank { "NUEVA META" },
-                montoObjetivo = montoObjetivo,
-                montoActual = 0.0
+                titulo = titulo.ifBlank { "CUENTA POR PAGAR" },
+                montoTotal = monto,
+                saldoPendiente = monto,
+                fechaVencimiento = vencimiento.ifBlank { "FIN DE MES" }
             )
-            dao.insertarMeta(nuevaMeta)
+            dao.insertarCuentaPorPagar(nueva)
         }
     }
 
-    fun editarMeta(metaActualizada: MetaAhorro) {
+    fun abonarCuentaPorPagar(deuda: CuentaPorPagar, abono: Double, cuentaId: String) {
+        if (abono <= 0) return
         viewModelScope.launch {
-            dao.insertarMeta(metaActualizada)
+            val nuevoSaldo = (deuda.saldoPendiente - abono).coerceAtLeast(0.0)
+            if (nuevoSaldo == 0.0) {
+                dao.eliminarCuentaPorPagar(deuda)
+            } else {
+                dao.insertarCuentaPorPagar(deuda.copy(saldoPendiente = nuevoSaldo))
+            }
+            agregarMovimiento("Abono Deuda: ${deuda.titulo}", abono, TipoMovimiento.GASTO, cuentaId)
         }
     }
 
-    fun abonarAMeta(meta: MetaAhorro, montoAbono: Double, cuentaId: String) {
-        if (montoAbono <= 0) return
+    fun agregarMetaAhorro(titulo: String, objetivo: Double) {
         viewModelScope.launch {
-            val metaActualizada = meta.copy(montoActual = meta.montoActual + montoAbono)
-            dao.insertarMeta(metaActualizada)
-            agregarMovimiento("Abono a Meta: ${meta.titulo}", montoAbono, TipoMovimiento.GASTO, cuentaId)
+            dao.insertarMeta(MetaAhorro(UUID.randomUUID().toString(), titulo, objetivo, 0.0))
+        }
+    }
+
+    fun abonarAMeta(meta: MetaAhorro, monto: Double, cuentaId: String) {
+        if (monto <= 0) return
+        viewModelScope.launch {
+            dao.insertarMeta(meta.copy(montoActual = meta.montoActual + monto))
+            agregarMovimiento("Ahorro: ${meta.titulo}", monto, TipoMovimiento.GASTO, cuentaId)
         }
     }
 
     fun eliminarMeta(meta: MetaAhorro) {
-        viewModelScope.launch {
-            dao.eliminarMeta(meta)
-        }
+        viewModelScope.launch { dao.eliminarMeta(meta) }
     }
 
-    fun actualizarPresupuesto(nuevoPresupuesto: Double) {
-        presupuestoMensual = nuevoPresupuesto
+    fun actualizarPresupuesto(valor: Double) {
+        presupuestoMensual = valor
     }
 }
