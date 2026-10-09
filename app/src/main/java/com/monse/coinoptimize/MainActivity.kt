@@ -266,7 +266,11 @@ fun TopHeaderBar(seccionActual: String) {
                     .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = if (seccionActual == "AHORROS") "METAS Y PROGRESO" else "OCT 2026",
+                    text = when (seccionActual) {
+                        "AHORROS" -> "METAS Y PROGRESO"
+                        "AJUSTES" -> "CONFIGURACIÓN DEL SISTEMA"
+                        else -> "OCT 2026"
+                    },
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -1129,7 +1133,6 @@ fun GraficoTendencia6MesesCard() {
     }
 }
 
-// --- PANTALLA AHORROS FIDELIDAD 100% REFERENCIA ---
 @Composable
 fun PantallaAhorrosContent(
     viewModel: MainViewModel,
@@ -1140,7 +1143,6 @@ fun PantallaAhorrosContent(
     val completadas = viewModel.metasAhorro.count { it.montoObjetivo > 0 && it.montoActual >= it.montoObjetivo }
     val activas = viewModel.metasAhorro.count { it.montoObjetivo > 0 && it.montoActual < it.montoObjetivo }
 
-    // 1. Tres tarjetas de resumen superiores
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1171,7 +1173,6 @@ fun PantallaAhorrosContent(
         )
     }
 
-    // 2. Encabezado de la sección y botón de acción
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1196,7 +1197,6 @@ fun PantallaAhorrosContent(
         }
     }
 
-    // 3. Contenido de las metas (vacio o lista)
     if (viewModel.metasAhorro.isEmpty()) {
         DashedContainer {
             Column(
@@ -1312,30 +1312,63 @@ fun PantallaAhorrosContent(
     }
 }
 
+// --- PANTALLA AJUSTES FIDELIDAD 100% REFERENCIA ---
 @Composable
 fun PantallaAjustesContent(viewModel: MainViewModel) {
+    var monedaSeleccionada by remember { mutableStateOf("MXN - PESO MEXICANO") }
+    var formatoFecha by remember { mutableStateOf("DD/MM/AAAA") }
     var presupuestoInput by remember {
-        mutableStateOf(if (viewModel.presupuestoMensual > 0) viewModel.presupuestoMensual.toString() else "")
+        mutableStateOf(if (viewModel.presupuestoMensual > 0) String.format("%.2f", viewModel.presupuestoMensual) else "0.00")
     }
+    var temaClaro by remember { mutableStateOf(true) }
     var guardado by remember { mutableStateOf(false) }
 
+    // 1. Tarjeta Moneda y Fecha
     NeoBrutalCard {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Text(
-                text = "CONFIGURACIÓN DE PRESUPUESTO",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Black,
-                color = ColorTextDark
-            )
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(text = "MONEDA Y FECHA", fontSize = 11.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+            
+            Text(text = "MONEDA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.5.dp, ColorBorderBlack)
+                    .background(Color.White)
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = monedaSeleccionada, fontSize = 13.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(text = "FORMATO DE FECHA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.5.dp, ColorBorderBlack)
+                    .background(Color.White)
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = formatoFecha, fontSize = 13.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+    }
+
+    // 2. Tarjeta Presupuesto Mensual
+    NeoBrutalCard {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = "PRESUPUESTO MENSUAL", fontSize = 11.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+            Text(text = "LÍMITE DE GASTO DEL MES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
+            
             OutlinedTextField(
                 value = presupuestoInput,
                 onValueChange = { presupuestoInput = it },
-                label = { Text("Presupuesto Mensual ($)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = ColorBorderBlack,
@@ -1346,25 +1379,112 @@ fun PantallaAjustesContent(viewModel: MainViewModel) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
-            NeoBrutalButton(
-                containerColor = ColorPrimaryRed,
-                contentColor = Color.White,
-                onClick = {
-                    viewModel.actualizarPresupuesto(presupuestoInput.toDoubleOrNull() ?: 0.0)
-                    guardado = true
-                }
-            ) {
-                Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-            if (guardado) {
-                Text(
-                    "¡Guardado correctamente!",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2E7D32)
-                )
-            }
+
+            Text(
+                text = "ALIMENTA LA BARRA DE PROGRESO DEL PANEL",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = ColorTextMuted
+            )
         }
+    }
+
+    // 3. Tarjeta Tema de la Interfaz
+    NeoBrutalCard {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(text = "TEMA DE LA INTERFAZ", fontSize = 11.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Opción CLARO
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(if (temaClaro) ColorPrimaryRed else Color.White)
+                        .border(2.dp, ColorBorderBlack)
+                        .clickable { temaClaro = true }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        Icon(
+                            Icons.Default.WbSunny,
+                            contentDescription = null,
+                            tint = if (temaClaro) Color.White else ColorTextDark,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "CLARO",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (temaClaro) Color.White else ColorTextDark
+                        )
+                    }
+                }
+
+                // Opción OSCURO
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(if (!temaClaro) ColorHeaderBg else Color.White)
+                        .border(2.dp, ColorBorderBlack)
+                        .clickable { temaClaro = false }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        Icon(
+                            Icons.Default.NightsStay,
+                            contentDescription = null,
+                            tint = if (!temaClaro) Color.White else ColorTextDark,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "OSCURO",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (!temaClaro) Color.White else ColorTextDark
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = "CONSERVA LA PALETA BRUTALISTA EN AMBOS MODOS",
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = ColorTextMuted
+            )
+        }
+    }
+
+    // 4. Botón Guardar Ajustes
+    NeoBrutalButton(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = ColorPrimaryRed,
+        contentColor = Color.White,
+        onClick = {
+            viewModel.actualizarPresupuesto(presupuestoInput.toDoubleOrNull() ?: 0.0)
+            guardado = true
+        }
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "GUARDAR AJUSTES", fontSize = 12.sp, fontWeight = FontWeight.Black)
+        }
+    }
+
+    if (guardado) {
+        Text(
+            text = "¡Ajustes guardados correctamente!",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF2E7D32),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
