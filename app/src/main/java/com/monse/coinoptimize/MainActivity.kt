@@ -90,16 +90,14 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
     var seccionSeleccionada by remember { mutableStateOf("INICIO") }
     var subSeccionMovimientos by remember { mutableStateOf("MENU") }
 
-    // Estados Globales de Ajustes e Interfaz
     var esTemaOscuro by remember { mutableStateOf(false) }
     val theme = if (esTemaOscuro) DarkTheme else LightTheme
 
     var monedaSeleccionada by remember { mutableStateOf("MXN - PESO MEXICANO") }
     var formatoFecha by remember { mutableStateOf("DD/MM/AAAA") }
     
-    // Navegador de Meses Global
     val mesesDisponibles = listOf("JUN 2026", "JUL 2026", "AGO 2026", "SEP 2026", "OCT 2026", "NOV 2026")
-    var indexMesActual by remember { mutableStateOf(4) } // OCT 2026 por defecto
+    var indexMesActual by remember { mutableStateOf(4) }
     val mesActualStr = mesesDisponibles[indexMesActual]
 
     var mostrarFormulario by remember { mutableStateOf(false) }
@@ -389,7 +387,7 @@ fun PantallaInicioContent(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(text = "$${String.format("%.2f", viewModel.totalIngresosMes)}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFF2E7D32))
                 }
-                IconBox3D(icon = Icons.Default.ArrowDownward, size = 28.dp, iconSize = 14.dp, bgColor = Color(0xFFE8F5E9), tint = Color(0xFF2E7D32), theme = theme)
+                IconBox3D(icon = Icons.Default.ArrowDownward, theme = theme, size = 28.dp, iconSize = 14.dp, bgColor = Color(0xFFE8F5E9), tint = Color(0xFF2E7D32))
             }
         }
         NeoBrutalCard(theme = theme, modifier = Modifier.weight(1f)) {
@@ -405,7 +403,7 @@ fun PantallaInicioContent(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(text = "$${String.format("%.2f", viewModel.totalGastosMes)}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = theme.primaryRed)
                 }
-                IconBox3D(icon = Icons.Default.ArrowUpward, size = 28.dp, iconSize = 14.dp, bgColor = Color(0xFFFFEBEE), tint = theme.primaryRed, theme = theme)
+                IconBox3D(icon = Icons.Default.ArrowUpward, theme = theme, size = 28.dp, iconSize = 14.dp, bgColor = Color(0xFFFFEBEE), tint = theme.primaryRed)
             }
         }
     }
@@ -515,7 +513,7 @@ fun PantallaInicioContent(
             modifier = Modifier.fillMaxWidth().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            IconBox3D(icon = Icons.Default.DateRange, size = 54.dp, iconSize = 32.dp, theme = theme)
+            IconBox3D(icon = Icons.Default.DateRange, theme = theme, size = 54.dp, iconSize = 32.dp)
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = "SIN VENCIMIENTOS", fontSize = 16.sp, fontWeight = FontWeight.Black, color = theme.textDark)
             Spacer(modifier = Modifier.height(8.dp))
@@ -560,9 +558,9 @@ fun PantallaCentroOperacionesContent(
                                 "INGRESOS_EXTRA" -> Icons.Default.TrendingUp
                                 else -> Icons.Default.SwapHoriz
                             },
+                            theme = theme,
                             size = 40.dp,
-                            iconSize = 22.dp,
-                            theme = theme
+                            iconSize = 22.dp
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
@@ -604,7 +602,7 @@ fun PantallaCentroOperacionesContent(
                 if (viewModel.cuentasPorPagar.isEmpty()) {
                     DashedContainer(theme = theme) {
                         Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            IconBox3D(icon = Icons.Default.ReceiptLong, size = 54.dp, iconSize = 32.dp, theme = theme)
+                            IconBox3D(icon = Icons.Default.ReceiptLong, theme = theme, size = 54.dp, iconSize = 32.dp)
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(text = "SIN CUENTAS POR PAGAR", fontSize = 16.sp, fontWeight = FontWeight.Black, color = theme.textDark)
                             Spacer(modifier = Modifier.height(8.dp))
@@ -644,7 +642,7 @@ fun ListaMovimientosSub(lista: List<Movimiento>, tituloVacio: String, descVacio:
     if (lista.isEmpty()) {
         DashedContainer(theme = theme) {
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                IconBox3D(icon = Icons.Default.Paid, size = 54.dp, iconSize = 32.dp, theme = theme)
+                IconBox3D(icon = Icons.Default.Paid, theme = theme, size = 54.dp, iconSize = 32.dp)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(text = tituloVacio, fontSize = 16.sp, fontWeight = FontWeight.Black, color = theme.textDark)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -658,7 +656,6 @@ fun ListaMovimientosSub(lista: List<Movimiento>, tituloVacio: String, descVacio:
     }
 }
 
-// --- PANTALLA BALANCES CON NAVEGADOR DE PERIODO ACTIVO ---
 @Composable
 fun PantallaBalancesContent(
     viewModel: MainViewModel,
@@ -846,7 +843,7 @@ fun PantallaAhorrosContent(
     if (viewModel.metasAhorro.isEmpty()) {
         DashedContainer(theme = theme) {
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                IconBox3D(icon = Icons.Default.Savings, size = 54.dp, iconSize = 30.dp, theme = theme)
+                IconBox3D(icon = Icons.Default.Savings, theme = theme, size = 54.dp, iconSize = 30.dp)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(text = "SIN METAS TODAVÍA", fontSize = 16.sp, fontWeight = FontWeight.Black, color = theme.textDark)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -887,7 +884,6 @@ fun PantallaAhorrosContent(
     }
 }
 
-// --- PANTALLA AJUSTES CON MENÚS DESPLEGABLES Y TEMA DINÁMICO ---
 @Composable
 fun PantallaAjustesContent(
     viewModel: MainViewModel,
@@ -910,7 +906,6 @@ fun PantallaAjustesContent(
     val monedasList = listOf("MXN - PESO MEXICANO", "USD - DÓLAR ESTADOUNIDENSE", "EUR - EURO", "VES - BOLÍVAR")
     val fechasList = listOf("DD/MM/AAAA", "MM/DD/AAAA", "AAAA-MM-DD")
 
-    // 1. Tarjeta Moneda y Fecha Interactiva
     NeoBrutalCard(theme = theme) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(text = "MONEDA Y FECHA", fontSize = 11.sp, fontWeight = FontWeight.Black, color = theme.textDark)
@@ -971,7 +966,6 @@ fun PantallaAjustesContent(
         }
     }
 
-    // 2. Tarjeta Presupuesto Mensual
     NeoBrutalCard(theme = theme) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text = "PRESUPUESTO MENSUAL", fontSize = 11.sp, fontWeight = FontWeight.Black, color = theme.textDark)
@@ -996,7 +990,6 @@ fun PantallaAjustesContent(
         }
     }
 
-    // 3. Tarjeta Tema de la Interfaz (Claro / Oscuro Real)
     NeoBrutalCard(theme = theme) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(text = "TEMA DE LA INTERFAZ", fontSize = 11.sp, fontWeight = FontWeight.Black, color = theme.textDark)
@@ -1038,7 +1031,6 @@ fun PantallaAjustesContent(
         }
     }
 
-    // 4. Botón Guardar Ajustes
     NeoBrutalButton(
         modifier = Modifier.fillMaxWidth(),
         containerColor = theme.primaryRed,
@@ -1061,7 +1053,6 @@ fun PantallaAjustesContent(
     }
 }
 
-// --- DIÁLOGOS Y COMPONENTES AUXILIARES ---
 @Composable
 fun FormularioCrearDeudaDialog(theme: AppThemeColors, onDismiss: () -> Unit, onGuardar: (String, Double, String) -> Unit) {
     var titulo by remember { mutableStateOf("") }
@@ -1393,11 +1384,11 @@ fun ItemMovimientoCard(movimiento: Movimiento, theme: AppThemeColors, onClick: (
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconBox3D(
                     icon = if (esIngreso) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                    theme = theme,
                     size = 36.dp,
                     iconSize = 20.dp,
                     bgColor = if (esIngreso) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                    tint = colorMonto,
-                    theme = theme
+                    tint = colorMonto
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -1445,11 +1436,11 @@ fun NeoBrutalButton(
 @Composable
 fun IconBox3D(
     icon: ImageVector,
+    theme: AppThemeColors,
     size: Dp = 38.dp,
     iconSize: Dp = 20.dp,
     bgColor: Color = Color(0xFFB5B5B5),
-    tint: Color = Color(0xFF1A1A1A),
-    theme: AppThemeColors
+    tint: Color = Color(0xFF1A1A1A)
 ) {
     Box(
         modifier = Modifier.size(size).background(bgColor).border(2.dp, theme.borderBlack),
@@ -1471,7 +1462,7 @@ fun MetricMiniCard(
 ) {
     NeoBrutalCard(theme = theme, modifier = modifier) {
         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            IconBox3D(icon = icon, size = 32.dp, iconSize = 18.dp, bgColor = iconBg, iconTint = iconTint, theme = theme)
+            IconBox3D(icon = icon, theme = theme, size = 32.dp, iconSize = 18.dp, bgColor = iconBg, tint = iconTint)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = title, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = theme.textMuted)
             Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Black, color = theme.textDark)
