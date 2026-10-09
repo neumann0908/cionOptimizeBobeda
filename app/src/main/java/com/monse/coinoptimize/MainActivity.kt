@@ -118,8 +118,8 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                 tipo = tipoMovimientoForm,
                 cuentas = viewModel.cuentas,
                 onDismiss = { mostrarFormulario = false },
-                onGuardar = { concepto, monto, cuentaId ->
-                    viewModel.agregarMovimiento(concepto, monto, tipoMovimientoForm, cuentaId)
+                onGuardar = { concepto, monto, cuentaId, esFijo ->
+                    viewModel.agregarMovimiento(concepto, monto, tipoMovimientoForm, cuentaId, esFijo)
                 }
             )
         }
@@ -493,20 +493,21 @@ fun PantallaMovimientosContent(
     }
 }
 
-// --- FORMULARIO EMERGENTE NEO-BRUTALISTA ---
+// --- FORMULARIO EMERGENTE NEO-BRUTALISTA ACTUALIZADO CON SELECTOR DE RECURRENCIA ---
 @Composable
 fun FormularioMovimientoDialog(
     tipo: TipoMovimiento,
     cuentas: List<Cuenta>,
     onDismiss: () -> Unit,
-    onGuardar: (concepto: String, monto: Double, cuentaId: String) -> Unit
+    onGuardar: (concepto: String, monto: Double, cuentaId: String, esFijo: Boolean) -> Unit
 ) {
     var concepto by remember { mutableStateOf("") }
     var montoText by remember { mutableStateOf("") }
     var cuentaIdSeleccionada by remember { mutableStateOf(cuentas.firstOrNull()?.id ?: "1") }
+    var esFijoSeleccionado by remember { mutableStateOf(false) }
 
     val esIngreso = tipo == TipoMovimiento.INGRESO
-    val tituloHeader = if (esIngreso) "NUEVO INGRESO" else "REGISTRAR PAGO"
+    val tituloHeader = if (esIngreso) "REGISTRAR INGRESO" else "REGISTRAR PAGO / GASTO"
 
     Dialog(onDismissRequest = onDismiss) {
         Box {
@@ -522,7 +523,7 @@ fun FormularioMovimientoDialog(
                     .background(ColorScreenBg)
                     .border(3.dp, ColorBorderBlack)
                     .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = tituloHeader,
@@ -532,6 +533,7 @@ fun FormularioMovimientoDialog(
                     letterSpacing = 0.5.sp
                 )
 
+                // Campo Concepto
                 OutlinedTextField(
                     value = concepto,
                     onValueChange = { concepto = it },
@@ -546,6 +548,7 @@ fun FormularioMovimientoDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Campo Monto
                 OutlinedTextField(
                     value = montoText,
                     onValueChange = { montoText = it },
@@ -561,6 +564,53 @@ fun FormularioMovimientoDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // SELECTOR DE FRECUENCIA (EXTRA vs FIJO/SEMANAL)
+                Text(
+                    text = "TIPO DE TRANSACCIÓN:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ColorTextDark
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(if (!esFijoSeleccionado) ColorPrimaryRed else Color.White)
+                            .border(2.dp, ColorBorderBlack)
+                            .clickable { esFijoSeleccionado = false }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "EXTRA / PUNTUAL",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (!esFijoSeleccionado) Color.White else ColorTextDark
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(if (esFijoSeleccionado) ColorPrimaryRed else Color.White)
+                            .border(2.dp, ColorBorderBlack)
+                            .clickable { esFijoSeleccionado = true }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "FIJO / RECURRENTE",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (esFijoSeleccionado) Color.White else ColorTextDark
+                        )
+                    }
+                }
+
+                // Selector de Cuenta
                 Text(
                     text = "SELECCIONA CUENTA:",
                     fontSize = 11.sp,
@@ -576,7 +626,7 @@ fun FormularioMovimientoDialog(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .background(if (seleccionada) ColorPrimaryRed else Color.White)
+                                .background(if (seleccionada) ColorHeaderBg else Color.White)
                                 .border(2.dp, ColorBorderBlack)
                                 .clickable { cuentaIdSeleccionada = cuenta.id }
                                 .padding(vertical = 8.dp),
@@ -584,7 +634,7 @@ fun FormularioMovimientoDialog(
                         ) {
                             Text(
                                 text = cuenta.nombre,
-                                fontSize = 9.sp,
+                                fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (seleccionada) Color.White else ColorTextDark,
                                 textAlign = TextAlign.Center
@@ -595,6 +645,7 @@ fun FormularioMovimientoDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                // Botones Cancelar / Guardar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -615,7 +666,7 @@ fun FormularioMovimientoDialog(
                         onClick = {
                             val montoParsed = montoText.toDoubleOrNull() ?: 0.0
                             if (montoParsed > 0) {
-                                onGuardar(concepto, montoParsed, cuentaIdSeleccionada)
+                                onGuardar(concepto, montoParsed, cuentaIdSeleccionada, esFijoSeleccionado)
                                 onDismiss()
                             }
                         }
@@ -628,7 +679,7 @@ fun FormularioMovimientoDialog(
     }
 }
 
-// --- TARJETA PARA CADA MOVIMIENTO EN EL HISTORIAL ---
+// --- TARJETA CON ETIQUETA [FIJO] / [EXTRA] ---
 @Composable
 fun ItemMovimientoCard(movimiento: Movimiento) {
     val esIngreso = movimiento.tipo == TipoMovimiento.INGRESO
@@ -653,12 +704,29 @@ fun ItemMovimientoCard(movimiento: Movimiento) {
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(
-                        text = movimiento.concepto,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ColorTextDark
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = movimiento.concepto,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ColorTextDark
+                        )
+                        if (movimiento.esFijo) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(ColorHeaderBg)
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = "FIJO",
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
                     Text(
                         text = movimiento.fecha,
                         fontSize = 10.sp,
