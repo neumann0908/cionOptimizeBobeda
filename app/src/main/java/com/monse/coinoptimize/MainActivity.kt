@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -22,10 +23,13 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.monse.coinoptimize.data.Cuenta
 import com.monse.coinoptimize.data.Movimiento
 import com.monse.coinoptimize.data.TipoMovimiento
 
@@ -53,6 +57,10 @@ val ColorTextMuted = Color(0xFF666666)
 @Composable
 fun CajaFuerteMainScreen(viewModel: MainViewModel) {
     var seccionSeleccionada by remember { mutableStateOf("INICIO") }
+    
+    // ESTADOS PARA EL FORMULARIO
+    var mostrarFormulario by remember { mutableStateOf(false) }
+    var tipoMovimientoForm by remember { mutableStateOf(TipoMovimiento.INGRESO) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -71,8 +79,20 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 when (seccionSeleccionada) {
-                    "INICIO" -> PantallaInicioContent(viewModel)
-                    "MOVIMIENTOS" -> PantallaMovimientosContent(viewModel)
+                    "INICIO" -> PantallaInicioContent(
+                        viewModel = viewModel,
+                        onAbrirFormulario = { tipo ->
+                            tipoMovimientoForm = tipo
+                            mostrarFormulario = true
+                        }
+                    )
+                    "MOVIMIENTOS" -> PantallaMovimientosContent(
+                        viewModel = viewModel,
+                        onAbrirFormulario = { tipo ->
+                            tipoMovimientoForm = tipo
+                            mostrarFormulario = true
+                        }
+                    )
                     else -> PantallaProximamenteContent(seccionSeleccionada)
                 }
             }
@@ -81,6 +101,18 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
             BottomNavigationBar(
                 seccionActual = seccionSeleccionada,
                 onSeccionSelected = { seccionSeleccionada = it }
+            )
+        }
+
+        // DIÁLOGO / FORMULARIO INTERACTIVO
+        if (mostrarFormulario) {
+            FormularioMovimientoDialog(
+                tipo = tipoMovimientoForm,
+                cuentas = viewModel.cuentas,
+                onDismiss = { mostrarFormulario = false },
+                onGuardar = { concepto, monto, cuentaId ->
+                    viewModel.agregarMovimiento(concepto, monto, tipoMovimientoForm, cuentaId)
+                }
             )
         }
     }
@@ -171,8 +203,10 @@ fun TopHeaderBar(seccionActual: String) {
 
 // --- CONTENIDO PANTALLA INICIO ---
 @Composable
-fun PantallaInicioContent(viewModel: MainViewModel) {
-    // Balance Neto Calculado Dinámicamente
+fun PantallaInicioContent(
+    viewModel: MainViewModel,
+    onAbrirFormulario: (TipoMovimiento) -> Unit
+) {
     NeoBrutalCard {
         Row(
             modifier = Modifier
@@ -201,7 +235,6 @@ fun PantallaInicioContent(viewModel: MainViewModel) {
         }
     }
 
-    // Presupuesto y Gastado del mes
     NeoBrutalCard {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -256,7 +289,7 @@ fun PantallaInicioContent(viewModel: MainViewModel) {
         }
     }
 
-    // Botones de Acción
+    // Botones de Acción Interáctivos
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -265,7 +298,7 @@ fun PantallaInicioContent(viewModel: MainViewModel) {
             modifier = Modifier.weight(1f),
             containerColor = ColorPrimaryRed,
             contentColor = Color.White,
-            onClick = { }
+            onClick = { onAbrirFormulario(TipoMovimiento.INGRESO) }
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -286,7 +319,7 @@ fun PantallaInicioContent(viewModel: MainViewModel) {
             modifier = Modifier.weight(1f),
             containerColor = Color.White,
             contentColor = ColorTextDark,
-            onClick = { }
+            onClick = { onAbrirFormulario(TipoMovimiento.GASTO) }
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -308,7 +341,6 @@ fun PantallaInicioContent(viewModel: MainViewModel) {
         }
     }
 
-    // Sección Vencimientos
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -362,7 +394,10 @@ fun PantallaInicioContent(viewModel: MainViewModel) {
 
 // --- CONTENIDO PANTALLA MOVIMIENTOS ---
 @Composable
-fun PantallaMovimientosContent(viewModel: MainViewModel) {
+fun PantallaMovimientosContent(
+    viewModel: MainViewModel,
+    onAbrirFormulario: (TipoMovimiento) -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -407,7 +442,7 @@ fun PantallaMovimientosContent(viewModel: MainViewModel) {
         NeoBrutalButton(
             containerColor = ColorPrimaryRed,
             contentColor = Color.White,
-            onClick = { }
+            onClick = { onAbrirFormulario(TipoMovimiento.INGRESO) }
         ) {
             Text("+ NUEVO INGRESO", fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
@@ -446,6 +481,147 @@ fun PantallaMovimientosContent(viewModel: MainViewModel) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             viewModel.movimientos.forEach { movimiento ->
                 ItemMovimientoCard(movimiento = movimiento)
+            }
+        }
+    }
+}
+
+// --- FORMULARIO EMERGENTE NEO-BRUTALISTA ---
+@Composable
+fun FormularioMovimientoDialog(
+    tipo: TipoMovimiento,
+    cuentas: List<Cuenta>,
+    onDismiss: () -> Unit,
+    onGuardar: (concepto: String, monto: Double, cuentaId: String) -> Unit
+) {
+    var concepto by remember { mutableStateOf("") }
+    var montoText by remember { mutableStateOf("") }
+    var cuentaIdSeleccionada by remember { mutableStateOf(cuentas.firstOrNull()?.id ?: "1") }
+
+    val esIngreso = tipo == TipoMovimiento.INGRESO
+    val tituloHeader = if (esIngreso) "NUEVO INGRESO" else "REGISTRAR PAGO"
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box {
+            // Sombra desplazada
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .offset(x = 6.dp, y = 6.dp)
+                    .background(ColorBorderBlack)
+            )
+            // Contenedor principal
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ColorScreenBg)
+                    .border(3.dp, ColorBorderBlack)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = tituloHeader,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    color = ColorTextDark,
+                    letterSpacing = 0.5.sp
+                )
+
+                // Campo Concepto
+                OutlinedTextField(
+                    value = concepto,
+                    onValueChange = { concepto = it },
+                    label = { Text("Concepto / Descripción") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ColorBorderBlack,
+                        unfocusedBorderColor = ColorBorderBlack,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Campo Monto
+                OutlinedTextField(
+                    value = montoText,
+                    onValueChange = { montoText = it },
+                    label = { Text("Monto ($)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ColorBorderBlack,
+                        unfocusedBorderColor = ColorBorderBlack,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Selector de Cuenta
+                Text(
+                    text = "SELECCIONA CUENTA:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ColorTextDark
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    cuentas.forEach { cuenta ->
+                        val seleccionada = cuenta.id == cuentaIdSeleccionada
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(if (seleccionada) ColorPrimaryRed else Color.White)
+                                .border(2.dp, ColorBorderBlack)
+                                .clickable { cuentaIdSeleccionada = cuenta.id }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = cuenta.nombre,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (seleccionada) Color.White else ColorTextDark,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Botones Cancelar / Guardar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    NeoBrutalButton(
+                        modifier = Modifier.weight(1f),
+                        containerColor = Color.White,
+                        contentColor = ColorTextDark,
+                        onClick = onDismiss
+                    ) {
+                        Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    NeoBrutalButton(
+                        modifier = Modifier.weight(1f),
+                        containerColor = ColorPrimaryRed,
+                        contentColor = Color.White,
+                        onClick = {
+                            val montoParsed = montoText.toDoubleOrNull() ?: 0.0
+                            if (montoParsed > 0) {
+                                onGuardar(concepto, montoParsed, cuentaIdSeleccionada)
+                                onDismiss()
+                            }
+                        }
+                    ) {
+                        Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }
