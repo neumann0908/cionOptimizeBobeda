@@ -818,11 +818,13 @@ fun ListaMovimientosSub(
     }
 }
 
+// --- PANTALLA BALANCES FIDELIDAD 100% REFERENCIA ---
 @Composable
 fun PantallaBalancesContent(
     viewModel: MainViewModel,
     onAbrirTransferencia: () -> Unit
 ) {
+    // 1. Selector SEMANAL / MENSUAL
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -861,11 +863,12 @@ fun PantallaBalancesContent(
         }
     }
 
+    // 2. Navegador de Periodo
     NeoBrutalCard {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -876,11 +879,7 @@ fun PantallaBalancesContent(
                     .clickable { }
                     .padding(8.dp)
             ) {
-                Icon(
-                    Icons.Default.ChevronLeft,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
+                Icon(Icons.Default.ChevronLeft, contentDescription = null, modifier = Modifier.size(16.dp))
             }
             Text(
                 text = if (viewModel.modoBalances == "SEMANAL") "SEM 41 · 2026" else viewModel.periodoActual,
@@ -895,15 +894,12 @@ fun PantallaBalancesContent(
                     .clickable { }
                     .padding(8.dp)
             ) {
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
+                Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
             }
         }
     }
 
+    // 3. Tarjetas de Resumen Superior
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -934,52 +930,206 @@ fun PantallaBalancesContent(
         )
     }
 
+    // 4. Gráfico Ingresos vs Gastos
+    GraficoIngresosVsGastosCard(
+        ingresos = viewModel.totalIngresosMes,
+        gastos = viewModel.totalGastosMes
+    )
+
+    // 5. Desglose por Categoría
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "DESGLOSE POR CATEGORÍA",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Black,
+            color = ColorTextDark
+        )
+        Box(
+            modifier = Modifier
+                .border(1.5.dp, ColorBorderBlack)
+                .background(Color.White)
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+        ) {
+            Text(text = "2 CAT", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+
+    val deudasTotales = viewModel.totalDeudasPendientes
+    val pagosFijosTotales = viewModel.movimientos.filter { it.esFijo && it.tipo == TipoMovimiento.GASTO }.sumOf { it.monto }
+
+    TarjetaCategoriaBarra(titulo = "CUENTAS POR PAGAR", monto = deudasTotales, porcentaje = if (deudasTotales > 0) 100 else 0)
+    TarjetaCategoriaBarra(titulo = "PAGOS FIJOS", monto = pagosFijosTotales, porcentaje = if (pagosFijosTotales > 0) 100 else 0)
+
+    // 6. Gráfico Tendencia 6 Meses
+    GraficoTendencia6MesesCard()
+}
+
+@Composable
+fun GraficoIngresosVsGastosCard(ingresos: Double, gastos: Double) {
+    val maximo = maxOf(ingresos, gastos, 1.0)
+    val pctIngresos = (ingresos / maximo).toFloat().coerceIn(0.05f, 1f)
+    val pctGastos = (gastos / maximo).toFloat().coerceIn(0.05f, 1f)
+
     NeoBrutalCard {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "INGRESOS VS GASTOS", fontSize = 12.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .border(2.dp, ColorBorderBlack)
+                    .background(ColorScreenBg)
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                        modifier = Modifier.fillMaxHeight()
+                    ) {
+                        Text(text = "$${String.format("%.2f", ingresos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .fillMaxHeight(fraction = pctIngresos)
+                                .background(ColorBorderBlack)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(text = "INGRESOS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                        modifier = Modifier.fillMaxHeight()
+                    ) {
+                        Text(text = "$${String.format("%.2f", gastos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .fillMaxHeight(fraction = pctGastos)
+                                .background(ColorBorderBlack)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(text = "GASTOS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TarjetaCategoriaBarra(titulo: String, monto: Double, porcentaje: Int) {
+    NeoBrutalCard {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "BÓVEDAS Y CUENTAS",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Black,
-                    color = ColorTextDark
-                )
-                NeoBrutalButton(
-                    containerColor = ColorPrimaryRed,
-                    contentColor = Color.White,
-                    onClick = onAbrirTransferencia
+                Text(text = titulo, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
+                Text(text = "$${String.format("%.2f", monto)}", fontSize = 12.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(14.dp)
+                        .background(Color(0xFF333333))
+                        .border(1.dp, ColorBorderBlack)
                 ) {
-                    Text(
-                        text = "TRANSFERIR",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(fraction = (porcentaje / 100f).coerceIn(0f, 1f))
+                            .background(ColorPrimaryRed)
                     )
                 }
+                Text(text = "$porcentaje%", fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
+        }
+    }
+}
+
+@Composable
+fun GraficoTendencia6MesesCard() {
+    NeoBrutalCard {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "TENDENCIA 6 MESES", fontSize = 12.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(10.dp).background(Color(0xFF2E7D32)))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "ING", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(10.dp).background(ColorPrimaryRed))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "GAS", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
-            viewModel.cuentas.forEach { cuenta ->
-                val saldo = viewModel.obtenerSaldoRealCuenta(cuenta)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(110.dp)
+                    .border(2.dp, ColorBorderBlack)
+                    .background(ColorScreenBg)
+                    .padding(10.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Bottom
                 ) {
-                    Text(
-                        text = cuenta.nombre,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ColorTextMuted
-                    )
-                    Text(
-                        text = "$${String.format("%.2f", saldo)}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        color = ColorTextDark
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        listOf("10", "09", "08", "07", "06", "05").forEach { mes ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(20.dp)
+                                        .height(4.dp)
+                                        .background(ColorBorderBlack)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(text = mes, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
+                            }
+                        }
+                    }
                 }
             }
         }
