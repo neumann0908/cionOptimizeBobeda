@@ -3,6 +3,15 @@ package com.monse.coinoptimize.data
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
+@Entity(tableName = "cuentas_por_pagar")
+data class CuentaPorPagar(
+    @PrimaryKey val id: String,
+    val titulo: String,
+    val montoTotal: Double,
+    val saldoPendiente: Double,
+    val fechaVencimiento: String
+)
+
 @Dao
 interface AppDao {
     // CUENTAS
@@ -37,4 +46,14 @@ interface AppDao {
 
     @Delete
     suspend fun eliminarMeta(meta: MetaAhorro)
+
+    // CUENTAS POR PAGAR (DEUDAS)
+    @Query("SELECT * FROM cuentas_por_pagar")
+    fun obtenerCuentasPorPagar(): Flow<List<CuentaPorPagar>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertarCuentaPorPagar(cuenta: CuentaPorPagar)
+
+    @Delete
+    suspend fun eliminarCuentaPorPagar(cuenta: CuentaPorPagar)
 }
