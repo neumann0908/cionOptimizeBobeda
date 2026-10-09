@@ -32,10 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.monse.coinoptimize.data.Cuenta
-import com.monse.coinoptimize.data.MetaAhorro
-import com.monse.coinoptimize.data.Movimiento
-import com.monse.coinoptimize.data.TipoMovimiento
+import com.monse.coinoptimize.data.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,25 +62,22 @@ val ColorTextMuted = Color(0xFF666666)
 @Composable
 fun CajaFuerteMainScreen(viewModel: MainViewModel) {
     var seccionSeleccionada by remember { mutableStateOf("INICIO") }
-    
+    var subSeccionMovimientos by remember { mutableStateOf("MENU") } // "MENU", "PAGOS_FIJOS", "INGRESOS_FIJOS", "INGRESOS_EXTRA", "CUENTAS_POR_PAGAR"
+
     var mostrarFormulario by remember { mutableStateOf(false) }
     var tipoMovimientoForm by remember { mutableStateOf(TipoMovimiento.INGRESO) }
+    var esFijoForm by remember { mutableStateOf(false) }
     var mostrarTransferencia by remember { mutableStateOf(false) }
+    var mostrarCrearMeta by remember { mutableStateOf(false) }
+    var mostrarCrearDeuda by remember { mutableStateOf(false) }
 
     var movimientoSeleccionado by remember { mutableStateOf<Movimiento?>(null) }
-    var movimientoAEditar by remember { mutableStateOf<Movimiento?>(null) }
-
-    var mostrarCrearMeta by remember { mutableStateOf(false) }
     var metaAAbonar by remember { mutableStateOf<MetaAhorro?>(null) }
-    var metaSeleccionada by remember { mutableStateOf<MetaAhorro?>(null) }
-    var metaAEditar by remember { mutableStateOf<MetaAhorro?>(null) }
+    var deudaAAbonar by remember { mutableStateOf<CuentaPorPagar?>(null) }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = ColorScreenBg
-    ) {
+    Surface(modifier = Modifier.fillMaxSize(), color = ColorScreenBg) {
         Column(modifier = Modifier.fillMaxSize()) {
-            TopHeaderBar(seccionActual = seccionSeleccionada)
+            TopHeaderBar(seccionActual = if (seccionSeleccionada == "MOVIMIENTOS" && subSeccionMovimientos != "MENU") subSeccionMovimientos else seccionSeleccionada)
 
             Column(
                 modifier = Modifier
@@ -96,20 +90,24 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                     "INICIO" -> PantallaInicioContent(
                         viewModel = viewModel,
                         onIrAjustes = { seccionSeleccionada = "AJUSTES" },
-                        onAbrirFormulario = { tipo ->
+                        onAbrirFormulario = { tipo, fijo ->
                             tipoMovimientoForm = tipo
+                            esFijoForm = fijo
                             mostrarFormulario = true
                         }
                     )
-                    "MOVIMIENTOS" -> PantallaMovimientosContent(
+                    "MOVIMIENTOS" -> PantallaCentroOperacionesContent(
                         viewModel = viewModel,
-                        onAbrirFormulario = { tipo ->
+                        subSeccion = subSeccionMovimientos,
+                        onCambiarSubSeccion = { subSeccionMovimientos = it },
+                        onAbrirFormulario = { tipo, fijo ->
                             tipoMovimientoForm = tipo
+                            esFijoForm = fijo
                             mostrarFormulario = true
                         },
-                        onSeleccionarMovimiento = { movimiento ->
-                            movimientoSeleccionado = movimiento
-                        }
+                        onAbrirCrearDeuda = { mostrarCrearDeuda = true },
+                        onSeleccionarMovimiento = { movimientoSeleccionado = it },
+                        onAbonarDeuda = { deudaAAbonar = it }
                     )
                     "BALANCES" -> PantallaBalancesContent(
                         viewModel = viewModel,
@@ -118,8 +116,7 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                     "AHORROS" -> PantallaAhorrosContent(
                         viewModel = viewModel,
                         onCrearMeta = { mostrarCrearMeta = true },
-                        onAbonar = { meta -> metaAAbonar = meta },
-                        onSeleccionarMeta = { meta -> metaSeleccionada = meta }
+                        onAbonar = { metaAAbonar = it }
                     )
                     "AJUSTES" -> PantallaAjustesContent(viewModel = viewModel)
                 }
@@ -127,13 +124,17 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
 
             BottomNavigationBar(
                 seccionActual = seccionSeleccionada,
-                onSeccionSelected = { seccionSeleccionada = it }
+                onSeccionSelected = {
+                    seccionSeleccionada = it
+                    subSeccionMovimientos = "MENU"
+                }
             )
         }
 
         if (mostrarFormulario) {
             FormularioMovimientoDialog(
                 tipo = tipoMovimientoForm,
+                esFijoInicial = esFijoForm,
                 cuentas = viewModel.cuentas,
                 onDismiss = { mostrarFormulario = false },
                 onGuardar = { concepto, monto, cuentaId, esFijo ->
@@ -148,33 +149,6 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                 onDismiss = { mostrarTransferencia = false },
                 onTransferir = { origenId, destinoId, monto ->
                     viewModel.realizarTransferencia(origenId, destinoId, monto)
-                }
-            )
-        }
-
-        movimientoSeleccionado?.let { mov ->
-            OpcionesMovimientoDialog(
-                movimiento = mov,
-                onDismiss = { movimientoSeleccionado = null },
-                onEditar = {
-                    movimientoAEditar = mov
-                    movimientoSeleccionado = null
-                },
-                onEliminar = {
-                    viewModel.eliminarMovimiento(mov)
-                    movimientoSeleccionado = null
-                }
-            )
-        }
-
-        movimientoAEditar?.let { mov ->
-            FormularioEditarMovimientoDialog(
-                movimiento = mov,
-                cuentas = viewModel.cuentas,
-                onDismiss = { movimientoAEditar = null },
-                onGuardar = { movEditado ->
-                    viewModel.editarMovimiento(movEditado)
-                    movimientoAEditar = null
                 }
             )
         }
@@ -201,28 +175,35 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
             )
         }
 
-        metaSeleccionada?.let { meta ->
-            OpcionesMetaDialog(
-                meta = meta,
-                onDismiss = { metaSeleccionada = null },
-                onEditar = {
-                    metaAEditar = meta
-                    metaSeleccionada = null
-                },
-                onEliminar = {
-                    viewModel.eliminarMeta(meta)
-                    metaSeleccionada = null
+        if (mostrarCrearDeuda) {
+            FormularioCrearDeudaDialog(
+                onDismiss = { mostrarCrearDeuda = false },
+                onGuardar = { titulo, monto, vencimiento ->
+                    viewModel.agregarCuentaPorPagar(titulo, monto, vencimiento)
+                    mostrarCrearDeuda = false
                 }
             )
         }
 
-        metaAEditar?.let { meta ->
-            FormularioEditarMetaDialog(
-                meta = meta,
-                onDismiss = { metaAEditar = null },
-                onGuardar = { metaEditada ->
-                    viewModel.editarMeta(metaEditada)
-                    metaAEditar = null
+        deudaAAbonar?.let { deuda ->
+            FormularioAbonarDeudaDialog(
+                deuda = deuda,
+                cuentas = viewModel.cuentas,
+                onDismiss = { deudaAAbonar = null },
+                onAbonar = { monto, cuentaId ->
+                    viewModel.abonarCuentaPorPagar(deuda, monto, cuentaId)
+                    deudaAAbonar = null
+                }
+            )
+        }
+
+        movimientoSeleccionado?.let { mov ->
+            OpcionesMovimientoDialog(
+                movimiento = mov,
+                onDismiss = { movimientoSeleccionado = null },
+                onEliminar = {
+                    viewModel.eliminarMovimiento(mov)
+                    movimientoSeleccionado = null
                 }
             )
         }
@@ -241,23 +222,15 @@ fun TopHeaderBar(seccionActual: String) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(ColorPrimaryRed)
-                    .border(1.5.dp, ColorBorderBlack),
+                modifier = Modifier.size(36.dp).background(ColorPrimaryRed).border(1.5.dp, ColorBorderBlack),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Logo",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(text = "CAJA FUERTE", color = ColorPrimaryRed, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Text(text = seccionActual, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+                Text(text = seccionActual.replace("_", " "), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
             }
         }
 
@@ -272,7 +245,7 @@ fun TopHeaderBar(seccionActual: String) {
                 shape = RoundedCornerShape(0.dp),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Icon(imageVector = Icons.Default.ExitToApp, contentDescription = "Salir", tint = Color.White, modifier = Modifier.size(14.dp))
+                Icon(imageVector = Icons.Default.ExitToApp, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(text = "SALIR", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
@@ -280,23 +253,42 @@ fun TopHeaderBar(seccionActual: String) {
     }
 }
 
-// --- PANTALLA INICIO ---
+// --- PANTALLA INICIO (Exacta Referencia `1000295007_2.jpg`) ---
 @Composable
 fun PantallaInicioContent(
     viewModel: MainViewModel,
     onIrAjustes: () -> Unit,
-    onAbrirFormulario: (TipoMovimiento) -> Unit
+    onAbrirFormulario: (TipoMovimiento, Boolean) -> Unit
 ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        NeoBrutalCard(modifier = Modifier.weight(1f)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column {
+                    Text(text = "INGRESOS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = "$${String.format("%.2f", viewModel.totalIngresosMes)}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color(0xFF2E7D32))
+                }
+                IconBox3D(icon = Icons.Default.ArrowDownward, size = 28.dp, iconSize = 14.dp, bgColor = Color(0xFFE8F5E9), tint = Color(0xFF2E7D32))
+            }
+        }
+        NeoBrutalCard(modifier = Modifier.weight(1f)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column {
+                    Text(text = "GASTOS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = "$${String.format("%.2f", viewModel.totalGastosMes)}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorPrimaryRed)
+                }
+                IconBox3D(icon = Icons.Default.ArrowUpward, size = 28.dp, iconSize = 14.dp, bgColor = Color(0xFFFFEBEE), tint = ColorPrimaryRed)
+            }
+        }
+    }
+
     NeoBrutalCard {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text(text = "BALANCE NETO", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ColorTextDark, letterSpacing = 0.5.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "$${String.format("%.2f", viewModel.balanceNeto)}", fontSize = 28.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                Text(text = "BALANCE NETO", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(text = "$${String.format("%.2f", viewModel.balanceNeto)}", fontSize = 26.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
             }
             IconBox3D(icon = Icons.Default.Balance)
         }
@@ -304,336 +296,266 @@ fun PantallaInicioContent(
 
     NeoBrutalCard {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "PRESUPUESTO MENSUAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
                 Box(modifier = Modifier.border(1.5.dp, ColorBorderBlack).background(Color.White).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                    Text(
-                        text = if (viewModel.presupuestoMensual > 0) "$${String.format("%.0f", viewModel.presupuestoMensual)}" else "SIN LÍMITE",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = if (viewModel.presupuestoMensual > 0) "$${String.format("%.0f", viewModel.presupuestoMensual)}" else "SIN LÍMITE", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            
             val presupuesto = viewModel.presupuestoMensual
             val gastado = viewModel.totalGastosMes
             val progreso = if (presupuesto > 0) (gastado / presupuesto).toFloat().coerceIn(0f, 1f) else 0f
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(16.dp)
-                    .background(Color(0xFF333333))
-                    .border(1.dp, ColorBorderBlack)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(fraction = progreso)
-                        .background(ColorPrimaryRed)
-                )
+            Box(modifier = Modifier.fillMaxWidth().height(16.dp).background(Color(0xFF333333)).border(1.dp, ColorBorderBlack)) {
+                Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction = progreso).background(ColorPrimaryRed))
             }
-
             Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(text = "GASTADO $${String.format("%.2f", gastado)}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
-                Text(
-                    text = "CONFIGURA EN AJUSTES",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = ColorPrimaryRed,
-                    modifier = Modifier.clickable { onIrAjustes() }
-                )
+                Text(text = "CONFIGURA EN AJUSTES", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ColorPrimaryRed, modifier = Modifier.clickable { onIrAjustes() })
             }
         }
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        NeoBrutalButton(
-            modifier = Modifier.weight(1f),
-            containerColor = ColorPrimaryRed,
-            contentColor = Color.White,
-            onClick = { onAbrirFormulario(TipoMovimiento.INGRESO) }
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                Text("+", fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "INGRESO\nEXTRA", fontSize = 11.sp, fontWeight = FontWeight.Bold, lineHeight = 13.sp)
-            }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = { onAbrirFormulario(TipoMovimiento.INGRESO, false) }) {
+            Text(text = "+ INGRESO EXTRA", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
-
-        NeoBrutalButton(
-            modifier = Modifier.weight(1f),
-            containerColor = Color.White,
-            contentColor = ColorTextDark,
-            onClick = { onAbrirFormulario(TipoMovimiento.GASTO) }
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                IconBox3D(icon = Icons.Default.AttachMoney, size = 28.dp, iconSize = 16.dp)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "REGISTRAR\nPAGO", fontSize = 11.sp, fontWeight = FontWeight.Bold, lineHeight = 13.sp)
-            }
+        NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = { onAbrirFormulario(TipoMovimiento.GASTO, false) }) {
+            Text(text = "REGISTRAR PAGO", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = "PRÓXIMOS VENCIMIENTOS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
-        Text(text = "VER TODO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ColorPrimaryRed, modifier = Modifier.clickable { })
-    }
-
+    Text(text = "PRÓXIMOS VENCIMIENTOS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
     DashedContainer {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             IconBox3D(icon = Icons.Default.DateRange, size = 54.dp, iconSize = 32.dp)
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "SIN VENCIMIENTOS", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark, letterSpacing = 1.sp)
+            Text(text = "SIN VENCIMIENTOS", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = "No tienes pagos fijos ni cuentas por pagar próximas este mes.", fontSize = 12.sp, color = ColorTextMuted, textAlign = TextAlign.Center)
         }
     }
 }
 
-// --- PANTALLA MOVIMIENTOS MEJORADA ---
+// --- CENTRO DE OPERACIONES MOVIMIENTOS (Referencia `1000295006_2.jpg`) ---
 @Composable
-fun PantallaMovimientosContent(
+fun PantallaCentroOperacionesContent(
     viewModel: MainViewModel,
-    onAbrirFormulario: (TipoMovimiento) -> Unit,
-    onSeleccionarMovimiento: (Movimiento) -> Unit
+    subSeccion: String,
+    onCambiarSubSeccion: (String) -> Unit,
+    onAbrirFormulario: (TipoMovimiento, Boolean) -> Unit,
+    onAbrirCrearDeuda: () -> Unit,
+    onSeleccionarMovimiento: (Movimiento) -> Unit,
+    onAbonarDeuda: (CuentaPorPagar) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        MetricMiniCard(modifier = Modifier.weight(1f), title = "TOTAL", value = "$${String.format("%.2f", viewModel.totalIngresosMes)}", icon = Icons.Default.TrendingUp, iconBg = ColorPrimaryRed, iconTint = Color.White)
-        MetricMiniCard(modifier = Modifier.weight(1f), title = "REGISTROS", value = "${viewModel.cantidadRegistros}", icon = Icons.Default.Tag, iconBg = ColorGreyIconBox, iconTint = ColorTextDark)
-        MetricMiniCard(modifier = Modifier.weight(1f), title = "PERIODO", value = "OCT 2026", icon = Icons.Default.CalendarToday, iconBg = Color(0xFF2E7D32), iconTint = Color.White)
-    }
+    if (subSeccion == "MENU") {
+        Text(text = "ELIGE UNA SECCIÓN PARA REGISTRAR Y REVISAR TUS MOVIMIENTOS.", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
 
-    // Botones de acción rápida en movimientos
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        NeoBrutalButton(
-            modifier = Modifier.weight(1f),
-            containerColor = Color(0xFF2E7D32),
-            contentColor = Color.White,
-            onClick = { onAbrirFormulario(TipoMovimiento.INGRESO) }
-        ) {
-            Text("+ NUEVO INGRESO", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        val opciones = listOf(
+            Triple("PAGOS FIJOS", "Renta, servicios y suscripciones recurrentes.", "PAGOS_FIJOS"),
+            Triple("INGRESOS FIJOS", "Sueldo y entradas que se repiten cada periodo.", "INGRESOS_FIJOS"),
+            Triple("INGRESOS EXTRA", "Ventas, freelance y entradas eventuales.", "INGRESOS_EXTRA"),
+            Triple("CUENTAS POR PAGAR", "Deudas y saldos pendientes con abonos.", "CUENTAS_POR_PAGAR")
+        )
+
+        opciones.forEach { (titulo, desc, id) ->
+            NeoBrutalCard(modifier = Modifier.clickable { onCambiarSubSeccion(id) }) {
+                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        IconBox3D(
+                            icon = when(id) {
+                                "PAGOS_FIJOS" -> Icons.Default.Receipt
+                                "INGRESOS_FIJOS" -> Icons.Default.Work
+                                "INGRESOS_EXTRA" -> Icons.Default.TrendingUp
+                                else -> Icons.Default.SwapHoriz
+                            },
+                            size = 40.dp,
+                            iconSize = 22.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(text = titulo, fontSize = 14.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(text = desc, fontSize = 11.sp, color = ColorTextMuted)
+                        }
+                    }
+                    Text(text = ">", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorPrimaryRed)
+                }
+            }
+        }
+    } else {
+        // Sub-vista específica
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            NeoBrutalButton(containerColor = ColorHeaderBg, contentColor = Color.White, onClick = { onCambiarSubSeccion("MENU") }) {
+                Text(text = "< VOLVER", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+            NeoBrutalButton(containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
+                when(subSeccion) {
+                    "PAGOS_FIJOS" -> onAbrirFormulario(TipoMovimiento.GASTO, true)
+                    "INGRESOS_FIJOS" -> onAbrirFormulario(TipoMovimiento.INGRESO, true)
+                    "INGRESOS_EXTRA" -> onAbrirFormulario(TipoMovimiento.INGRESO, false)
+                    "CUENTAS_POR_PAGAR" -> onAbrirCrearDeuda()
+                }
+            }) {
+                Text(text = "+ NUEVO", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
-        NeoBrutalButton(
-            modifier = Modifier.weight(1f),
-            containerColor = ColorPrimaryRed,
-            contentColor = Color.White,
-            onClick = { onAbrirFormulario(TipoMovimiento.GASTO) }
-        ) {
-            Text("- NUEVO GASTO", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        when (subSeccion) {
+            "PAGOS_FIJOS" -> {
+                val lista = viewModel.movimientos.filter { it.tipo == TipoMovimiento.GASTO && it.esFijo }
+                ListaMovimientosSub(lista = lista, tituloVacio = "SIN PAGOS FIJOS", descVacio = "Registra tus pagos recurrentes como renta o servicios.", onSeleccionar = onSeleccionarMovimiento)
+            }
+            "INGRESOS_FIJOS" -> {
+                val lista = viewModel.movimientos.filter { it.tipo == TipoMovimiento.INGRESO && it.esFijo }
+                ListaMovimientosSub(lista = lista, tituloVacio = "SIN INGRESOS FIJOS", descVacio = "Registra entradas recurrentes como salario o rentas.", onSeleccionar = onSeleccionarMovimiento)
+            }
+            "INGRESOS_EXTRA" -> {
+                val lista = viewModel.movimientos.filter { it.tipo == TipoMovimiento.INGRESO && !it.esFijo }
+                ListaMovimientosSub(lista = lista, tituloVacio = "SIN INGRESOS EXTRA", descVacio = "Anota ingresos puntuales fuera de tu flujo fijo.", onSeleccionar = onSeleccionarMovimiento)
+            }
+            "CUENTAS_POR_PAGAR" -> {
+                if (viewModel.cuentasPorPagar.isEmpty()) {
+                    DashedContainer {
+                        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            IconBox3D(icon = Icons.Default.ReceiptLong, size = 54.dp, iconSize = 32.dp)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(text = "SIN CUENTAS POR PAGAR", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(text = "Registra tus deudas y controla cada abono hasta liquidarlas.", fontSize = 12.sp, color = ColorTextMuted, textAlign = TextAlign.Center)
+                        }
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        viewModel.cuentasPorPagar.forEach { deuda ->
+                            NeoBrutalCard {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                        Column {
+                                            Text(text = deuda.titulo, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
+                                            Text(text = "Vence: ${deuda.fechaVencimiento}", fontSize = 10.sp, color = ColorTextMuted)
+                                        }
+                                        Text(text = "$${String.format("\%.2f", deuda.saldoPendiente)} / $${String.format("%.0f", deuda.montoTotal)}", fontSize = 13.sp, fontWeight = FontWeight.Black, color = ColorPrimaryRed)
+                                    }
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        NeoBrutalButton(containerColor = ColorHeaderBg, contentColor = Color.White, onClick = { onAbonarDeuda(deuda) }) {
+                                            Text(text = "+ ABONAR", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
+}
 
-    Text(text = "HISTORIAL DE TRANSACCIONES", fontSize = 14.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-
-    if (viewModel.movimientos.isEmpty()) {
+@Composable
+fun ListaMovimientosSub(lista: List<Movimiento>, tituloVacio: String, descVacio: String, onSeleccionar: (Movimiento) -> Unit) {
+    if (lista.isEmpty()) {
         DashedContainer {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 IconBox3D(icon = Icons.Default.Paid, size = 54.dp, iconSize = 32.dp)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "SIN MOVIMIENTOS", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                Text(text = tituloVacio, fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Registra tus ingresos o pagos para verlos reflejados aquí.", fontSize = 12.sp, color = ColorTextMuted, textAlign = TextAlign.Center)
+                Text(text = descVacio, fontSize = 12.sp, color = ColorTextMuted, textAlign = TextAlign.Center)
             }
         }
     } else {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            viewModel.movimientos.forEach { movimiento ->
-                ItemMovimientoCard(movimiento = movimiento, onClick = { onSeleccionarMovimiento(movimiento) })
+            lista.forEach { mov ->
+                ItemMovimientoCard(movimiento = mov, onClick = { onSeleccionar(mov) })
             }
         }
     }
 }
 
-// --- PANTALLA BALANCES REORGANIZADA ---
+// --- PANTALLA BALANCES (Con selector Semanal/Mensual exacto a referencia `1000295002_2.jpg`) ---
 @Composable
-fun PantallaBalancesContent(
-    viewModel: MainViewModel,
-    onAbrirTransferencia: () -> Unit
-) {
+fun PantallaBalancesContent(viewModel: MainViewModel, onAbrirTransferencia: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(
+            modifier = Modifier.weight(1f).background(if (viewModel.modoBalances == "SEMANAL") ColorPrimaryRed else Color.White).border(2.dp, ColorBorderBlack).clickable { viewModel.modoBalances = "SEMANAL" }.padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "SEMANAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (viewModel.modoBalances == "SEMANAL") Color.White else ColorTextDark)
+        }
+        Box(
+            modifier = Modifier.weight(1f).background(if (viewModel.modoBalances == "MENSUAL") ColorPrimaryRed else Color.White).border(2.dp, ColorBorderBlack).clickable { viewModel.modoBalances = "MENSUAL" }.padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "MENSUAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (viewModel.modoBalances == "MENSUAL") Color.White else ColorTextDark)
+        }
+    }
+
     NeoBrutalCard {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(text = "BÓVEDAS Y CUENTAS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "TOTAL: $${String.format("%.2f", viewModel.balanceNeto)}", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.background(Color.White).border(1.5.dp, ColorBorderBlack).clickable { }.padding(8.dp)) {
+                Icon(Icons.Default.ChevronLeft, contentDescription = null, modifier = Modifier.size(16.dp))
             }
-            NeoBrutalButton(
-                containerColor = ColorPrimaryRed,
-                contentColor = Color.White,
-                onClick = onAbrirTransferencia
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CompareArrows, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("TRANSFERIR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
+            Text(text = if (viewModel.modoBalances == "SEMANAL") "SEM 41 · 2026" else viewModel.periodoActual, fontSize = 13.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+            Box(modifier = Modifier.background(Color.White).border(1.5.dp, ColorBorderBlack).clickable { }.padding(8.dp)) {
+                Icon(Icons.Default.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
             }
         }
     }
 
-    val totalGlobal = viewModel.balanceNeto
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        viewModel.cuentas.forEach { cuenta ->
-            val saldoReal = viewModel.obtenerSaldoRealCuenta(cuenta)
-            val porcentaje = if (totalGlobal > 0) (saldoReal / totalGlobal) * 100 else 0.0
-
-            NeoBrutalCard {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconBox3D(
-                                icon = when (cuenta.tipo) {
-                                    com.monse.coinoptimize.data.TipoCuenta.EFECTIVO -> Icons.Default.Payments
-                                    com.monse.coinoptimize.data.TipoCuenta.BANCO -> Icons.Default.AccountBalance
-                                    com.monse.coinoptimize.data.TipoCuenta.AHORRO -> Icons.Default.Lock
-                                },
-                                size = 36.dp,
-                                iconSize = 20.dp
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(text = cuenta.nombre, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
-                                Text(text = "${String.format("%.1f", porcentaje)}% del total", fontSize = 10.sp, color = ColorTextMuted)
-                            }
-                        }
-                        Text(text = "$${String.format("%.2f", saldoReal)}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(8.dp).background(Color(0xFFE0E0E0)).border(1.dp, ColorBorderBlack)
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction = (porcentaje / 100).toFloat().coerceIn(0f, 1f)).background(ColorPrimaryRed)
-                        )
-                    }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        MetricMiniCard(modifier = Modifier.weight(1f), title = "INGRESOS", value = "$${String.format("\%.2f", viewModel.totalIngresosMes)}", icon = Icons.Default.TrendingUp, iconBg = Color(0xFF2E7D32), iconTint = Color.White)         MetricMiniCard(modifier = Modifier.weight(1f), title = "GASTOS", value = "$${String.format("%.2f", viewModel.totalGastosMes)}", icon = Icons.Default.TrendingDown, iconBg = ColorPrimaryRed, iconTint = Color.White)
+        MetricMiniCard(modifier = Modifier.weight(1f), title = "NETO", value = "$${String.format("\%.2f", viewModel.balanceNeto)}", icon = Icons.Default.AccountBalance, iconBg = ColorHeaderBg, iconTint = Color.White)     }      NeoBrutalCard {         Column(modifier = Modifier.padding(16.dp)) {             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {                 Text(text = "BÓVEDAS Y CUENTAS", fontSize = 12.sp, fontWeight = FontWeight.Black, color = ColorTextDark)                 NeoBrutalButton(containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = onAbrirTransferencia) {                     Text(text = "TRANSFERIR", fontSize = 10.sp, fontWeight = FontWeight.Bold)                 }             }             Spacer(modifier = Modifier.height(12.dp))             viewModel.cuentas.forEach { cuenta ->                 val saldo = viewModel.obtenerSaldoRealCuenta(cuenta)                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {                     Text(text = cuenta.nombre, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)                     Text(text = "$${String.format("%.2f", saldo)}", fontSize = 12.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
                 }
             }
         }
     }
 }
 
-// --- PANTALLA AHORROS / METAS CON OPCIONES ---
+// --- PANTALLA AHORROS ---
 @Composable
-fun PantallaAhorrosContent(
-    viewModel: MainViewModel,
-    onCrearMeta: () -> Unit,
-    onAbonar: (MetaAhorro) -> Unit,
-    onSeleccionarMeta: (MetaAhorro) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+fun PantallaAhorrosContent(viewModel: MainViewModel, onCrearMeta: () -> Unit, onAbonar: (MetaAhorro) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(text = "METAS DE AHORRO", fontSize = 14.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-        NeoBrutalButton(
-            containerColor = ColorPrimaryRed,
-            contentColor = Color.White,
-            onClick = onCrearMeta
-        ) {
-            Text("+ NUEVA META", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        NeoBrutalButton(containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = onCrearMeta) {
+            Text(text = "+ NUEVA META", fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 
     if (viewModel.metasAhorro.isEmpty()) {
         DashedContainer {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 IconBox3D(icon = Icons.Default.Savings, size = 54.dp, iconSize = 32.dp)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "SIN METAS REGISTRADAS", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                Text(text = "SIN METAS TODAVÍA", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Fija metas de ahorro con barras de avance para alcanzar tus objetivos.", fontSize = 12.sp, color = ColorTextMuted, textAlign = TextAlign.Center)
+                Text(text = "Crea tu primera meta de ahorro y observa cómo crece tu progreso.", fontSize = 12.sp, color = ColorTextMuted, textAlign = TextAlign.Center)
             }
         }
     } else {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             viewModel.metasAhorro.forEach { meta ->
                 val porcentaje = if (meta.montoObjetivo > 0) (meta.montoActual / meta.montoObjetivo) * 100 else 0.0
-
-                NeoBrutalCard(modifier = Modifier.clickable { onSeleccionarMeta(meta) }) {
+                NeoBrutalCard {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconBox3D(icon = Icons.Default.Flag, size = 36.dp, iconSize = 20.dp, bgColor = Color(0xFFFFF9C4), tint = ColorTextDark)
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(text = meta.titulo, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
-                                    Text(text = "${String.format("%.1f", porcentaje)}% completado (Toca para opciones)", fontSize = 10.sp, color = ColorTextMuted)
-                                }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                Text(text = meta.titulo, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
+                                Text(text = "${String.format("%.1f", porcentaje)}% completado", fontSize = 10.sp, color = ColorTextMuted)
                             }
-                            Text(text = "$${String.format("%.2f", meta.montoActual)} / $${String.format("%.0f", meta.montoObjetivo)}", fontSize = 13.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                            Text(text = "$${String.format("\%.2f", meta.montoActual)} / $${String.format("%.0f", meta.montoObjetivo)}", fontSize = 13.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
                         }
-
                         Spacer(modifier = Modifier.height(10.dp))
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(12.dp).background(Color(0xFFE0E0E0)).border(1.5.dp, ColorBorderBlack)
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction = (porcentaje / 100).toFloat().coerceIn(0f, 1f)).background(Color(0xFF2E7D32))
-                            )
+                        Box(modifier = Modifier.fillMaxWidth().height(10.dp).background(Color(0xFFE0E0E0)).border(1.dp, ColorBorderBlack)) {
+                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction = (porcentaje / 100).toFloat().coerceIn(0f, 1f)).background(Color(0xFF2E7D32)))
                         }
-
                         Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            NeoBrutalButton(
-                                containerColor = ColorHeaderBg,
-                                contentColor = Color.White,
-                                onClick = { onAbonar(meta) }
-                            ) {
-                                Text("+ ABONAR", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            NeoBrutalButton(containerColor = ColorHeaderBg, contentColor = Color.White, onClick = { onAbonar(meta) }) {
+                                Text(text = "+ ABONAR", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -643,193 +565,58 @@ fun PantallaAhorrosContent(
     }
 }
 
-// --- PANTALLA AJUSTES (NUEVA) ---
+// --- PANTALLA AJUSTES ---
 @Composable
 fun PantallaAjustesContent(viewModel: MainViewModel) {
     var presupuestoInput by remember { mutableStateOf(if (viewModel.presupuestoMensual > 0) viewModel.presupuestoMensual.toString() else "") }
-    var mensajeGuardado by remember { mutableStateOf(false) }
+    var guardado by remember { mutableStateOf(false) }
 
     NeoBrutalCard {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(text = "CONFIGURACIÓN DE PRESUPUESTO", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-            Text(text = "Establece tu límite de gastos mensuales para controlar tus finanzas en la pantalla de inicio.", fontSize = 12.sp, color = ColorTextMuted)
-
             OutlinedTextField(
                 value = presupuestoInput,
                 onValueChange = { presupuestoInput = it },
                 label = { Text("Presupuesto Mensual ($)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = ColorBorderBlack,
-                    unfocusedBorderColor = ColorBorderBlack,
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                ),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
-
-            NeoBrutalButton(
-                containerColor = ColorPrimaryRed,
-                contentColor = Color.White,
-                onClick = {
-                    val valor = presupuestoInput.toDoubleOrNull() ?: 0.0
-                    viewModel.actualizarPresupuesto(valor)
-                    mensajeGuardado = true
-                }
-            ) {
-                Text("GUARDAR PRESUPUESTO", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            NeoBrutalButton(containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
+                viewModel.actualizarPresupuesto(presupuestoInput.toDoubleOrNull() ?: 0.0)
+                guardado = true
+            }) {
+                Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
-
-            if (mensajeGuardado) {
-                Text(text = "¡Presupuesto actualizado correctamente!", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+            if (guardado) {
+                Text("¡Guardado correctamente!", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
             }
         }
     }
 }
 
-// --- DIÁLOGOS DE METAS Y OPCIONES ---
+// --- DIÁLOGOS DE CREACIÓN Y ABONOS ---
 @Composable
-fun OpcionesMetaDialog(
-    meta: MetaAhorro,
-    onDismiss: () -> Unit,
-    onEditar: () -> Unit,
-    onEliminar: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Box {
-            Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
-            Column(
-                modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = "OPCIONES DE META", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-                Text(text = meta.titulo, fontSize = 13.sp, color = ColorTextMuted)
-
-                NeoBrutalButton(containerColor = ColorHeaderBg, contentColor = Color.White, onClick = onEditar) {
-                    Text("EDITAR META", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-
-                NeoBrutalButton(containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = onEliminar) {
-                    Text("ELIMINAR META", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-
-                NeoBrutalButton(containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) {
-                    Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FormularioEditarMetaDialog(
-    meta: MetaAhorro,
-    onDismiss: () -> Unit,
-    onGuardar: (MetaAhorro) -> Unit
-) {
-    var titulo by remember { mutableStateOf(meta.titulo) }
-    var montoText by remember { mutableStateOf(meta.montoObjetivo.toString()) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Box {
-            Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
-            Column(
-                modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = "EDITAR META DE AHORRO", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-
-                OutlinedTextField(
-                    value = titulo,
-                    onValueChange = { titulo = it },
-                    label = { Text("Título / Objetivo") },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = montoText,
-                    onValueChange = { montoText = it },
-                    label = { Text("Monto Objetivo ($)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) {
-                        Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    NeoBrutalButton(
-                        modifier = Modifier.weight(1f),
-                        containerColor = ColorPrimaryRed,
-                        contentColor = Color.White,
-                        onClick = {
-                            val monto = montoText.toDoubleOrNull() ?: 0.0
-                            if (monto > 0) {
-                                onGuardar(meta.copy(titulo = titulo, montoObjetivo = monto))
-                            }
-                        }
-                    ) {
-                        Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// --- DIÁLOGOS DE CREAR META, ABONAR, TRANSFERENCIA Y MOVIMIENTO ---
-@Composable
-fun FormularioCrearMetaDialog(onDismiss: () -> Unit, onGuardar: (titulo: String, montoObjetivo: Double) -> Unit) {
+fun FormularioCrearDeudaDialog(onDismiss: () -> Unit, onGuardar: (String, Double, String) -> Unit) {
     var titulo by remember { mutableStateOf("") }
     var montoText by remember { mutableStateOf("") }
+    var vencimiento by remember { mutableStateOf("31 OCT 2026") }
 
     Dialog(onDismissRequest = onDismiss) {
         Box {
             Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
-            Column(
-                modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = "NUEVA META DE AHORRO", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-                OutlinedTextField(
-                    value = titulo,
-                    onValueChange = { titulo = it },
-                    label = { Text("Título / Objetivo") },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = montoText,
-                    onValueChange = { montoText = it },
-                    label = { Text("Monto Objetivo ($)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Column(modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "REGISTRAR CUENTA POR PAGAR", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                OutlinedTextField(value = titulo, onValueChange = { titulo = it }, label = { Text("Título / Deuda") }, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = montoText, onValueChange = { montoText = it }, label = { Text("Monto Total ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = vencimiento, onValueChange = { vencimiento = it }, label = { Text("Fecha de Vencimiento") }, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) {
-                        Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) { Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
-                        val monto = montoText.toDoubleOrNull() ?: 0.0
-                        if (monto > 0) onGuardar(titulo, monto)
-                    }) {
-                        Text("CREAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                        val m = montoText.toDoubleOrNull() ?: 0.0
+                        if (m > 0) onGuardar(titulo, m, vencimiento)
+                    }) { Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -837,124 +624,70 @@ fun FormularioCrearMetaDialog(onDismiss: () -> Unit, onGuardar: (titulo: String,
 }
 
 @Composable
-fun FormularioAbonarMetaDialog(meta: MetaAhorro, cuentas: List<Cuenta>, onDismiss: () -> Unit, onAbonar: (monto: Double, cuentaId: String) -> Unit) {
-    var montoText by remember { mutableStateOf("") }
+fun FormularioAbonarDeudaDialog(deuda: CuentaPorPagar, cuentas: List<Cuenta>, onDismiss: () -> Unit, onAbonar: (Double, String) -> Unit) {
+    var abonoText by remember { mutableStateOf("") }
     var cuentaIdSeleccionada by remember { mutableStateOf(cuentas.firstOrNull()?.id ?: "1") }
 
     Dialog(onDismissRequest = onDismiss) {
         Box {
             Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
-            Column(
-                modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = "ABONAR A: ${meta.titulo}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-                OutlinedTextField(
-                    value = montoText,
-                    onValueChange = { montoText = it },
-                    label = { Text("Monto del Abono ($)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Column(modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "ABONAR A: ${deuda.titulo}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                OutlinedTextField(value = abonoText, onValueChange = { abonoText = it }, label = { Text("Monto del Abono ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text("ORIGEN DEL DINERO:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     cuentas.forEach { c ->
                         val sel = c.id == cuentaIdSeleccionada
-                        Box(
-                            modifier = Modifier.weight(1f).background(if (sel) ColorPrimaryRed else Color.White).border(1.5.dp, ColorBorderBlack).clickable { cuentaIdSeleccionada = c.id }.padding(vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(modifier = Modifier.weight(1f).background(if (sel) ColorPrimaryRed else Color.White).border(1.5.dp, ColorBorderBlack).clickable { cuentaIdSeleccionada = c.id }.padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
                             Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else ColorTextDark)
                         }
                     }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) {
-                        Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) { Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
-                        val monto = montoText.toDoubleOrNull() ?: 0.0
-                        if (monto > 0) onAbonar(monto, cuentaIdSeleccionada)
-                    }) {
-                        Text("ABONAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                        val m = abonoText.toDoubleOrNull() ?: 0.0
+                        if (m > 0) onAbonar(m, cuentaIdSeleccionada)
+                    }) { Text("ABONAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                 }
             }
         }
     }
 }
 
+// (Resto de diálogos estándar ya existentes)
 @Composable
-fun OpcionesMovimientoDialog(movimiento: Movimiento, onDismiss: () -> Unit, onEditar: () -> Unit, onEliminar: () -> Unit) {
-    Dialog(onDismissRequest = onDismiss) {
-        Box {
-            Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
-            Column(
-                modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = "OPCIONES DE REGISTRO", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-                Text(text = "${movimiento.concepto} - $${String.format("%.2f", movimiento.monto)}", fontSize = 13.sp, color = ColorTextMuted)
-                NeoBrutalButton(containerColor = ColorHeaderBg, contentColor = Color.White, onClick = onEditar) {
-                    Text("EDITAR REGISTRO", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-                NeoBrutalButton(containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = onEliminar) {
-                    Text("ELIMINAR REGISTRO", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-                NeoBrutalButton(containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) {
-                    Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FormularioEditarMovimientoDialog(movimiento: Movimiento, cuentas: List<Cuenta>, onDismiss: () -> Unit, onGuardar: (Movimiento) -> Unit) {
-    var concepto by remember { mutableStateOf(movimiento.concepto) }
-    var montoText by remember { mutableStateOf(movimiento.monto.toString()) }
-    var cuentaIdSeleccionada by remember { mutableStateOf(movimiento.cuentaId) }
-    var esFijoSeleccionado by remember { mutableStateOf(movimiento.esFijo) }
+fun FormularioMovimientoDialog(tipo: TipoMovimiento, esFijoInicial: Boolean, cuentas: List<Cuenta>, onDismiss: () -> Unit, onGuardar: (String, Double, String, Boolean) -> Unit) {
+    var concepto by remember { mutableStateOf("") }
+    var montoText by remember { mutableStateOf("") }
+    var cuentaIdSeleccionada by remember { mutableStateOf(cuentas.firstOrNull()?.id ?: "1") }
+    var esFijo by remember { mutableStateOf(esFijoInicial) }
 
     Dialog(onDismissRequest = onDismiss) {
         Box {
             Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
-            Column(
-                modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = "EDITAR REGISTRO", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-                OutlinedTextField(
-                    value = concepto,
-                    onValueChange = { concepto = it },
-                    label = { Text("Concepto") },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = montoText,
-                    onValueChange = { montoText = it },
-                    label = { Text("Monto ($)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) {
-                        Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
-                        val montoParsed = montoText.toDoubleOrNull() ?: 0.0
-                        if (montoParsed > 0) {
-                            onGuardar(movimiento.copy(concepto = concepto, monto = montoParsed, cuentaId = cuentaIdSeleccionada, esFijo = esFijoSeleccionado))
+            Column(modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = if (tipo == TipoMovimiento.INGRESO) "REGISTRAR INGRESO" else "REGISTRAR GASTO", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                OutlinedTextField(value = concepto, onValueChange = { concepto = it }, label = { Text("Concepto / Descripción") }, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = montoText, onValueChange = { montoText = it }, label = { Text("Monto ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
+                Text("CUENTA:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    cuentas.forEach { c ->
+                        val sel = c.id == cuentaIdSeleccionada
+                        Box(modifier = Modifier.weight(1f).background(if (sel) ColorHeaderBg else Color.White).border(1.5.dp, ColorBorderBlack).clickable { cuentaIdSeleccionada = c.id }.padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                            Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else ColorTextDark)
                         }
-                    }) {
-                        Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) { Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
+                        val m = montoText.toDoubleOrNull() ?: 0.0
+                        if (m > 0) {
+                            onGuardar(concepto, m, cuentaIdSeleccionada, esFijo)
+                            onDismiss()
+                        }
+                    }) { Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -962,7 +695,7 @@ fun FormularioEditarMovimientoDialog(movimiento: Movimiento, cuentas: List<Cuent
 }
 
 @Composable
-fun FormularioTransferenciaDialog(cuentas: List<Cuenta>, onDismiss: () -> Unit, onTransferir: (origenId: String, destinoId: String, monto: Double) -> Unit) {
+fun FormularioTransferenciaDialog(cuentas: List<Cuenta>, onDismiss: () -> Unit, onTransferir: (String, String, Double) -> Unit) {
     var origenId by remember { mutableStateOf(cuentas.firstOrNull()?.id ?: "1") }
     var destinoId by remember { mutableStateOf(cuentas.getOrNull(1)?.id ?: "2") }
     var montoText by remember { mutableStateOf("") }
@@ -970,57 +703,18 @@ fun FormularioTransferenciaDialog(cuentas: List<Cuenta>, onDismiss: () -> Unit, 
     Dialog(onDismissRequest = onDismiss) {
         Box {
             Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
-            Column(
-                modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            Column(modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(text = "TRANSFERIR FONDOS", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-                Text("DESDE (ORIGEN):", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    cuentas.forEach { c ->
-                        val sel = c.id == origenId
-                        Box(
-                            modifier = Modifier.weight(1f).background(if (sel) ColorPrimaryRed else Color.White).border(1.5.dp, ColorBorderBlack).clickable { origenId = c.id }.padding(vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else ColorTextDark)
-                        }
-                    }
-                }
-                Text("HACIA (DESTINO):", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    cuentas.forEach { c ->
-                        val sel = c.id == destinoId
-                        Box(
-                            modifier = Modifier.weight(1f).background(if (sel) ColorHeaderBg else Color.White).border(1.5.dp, ColorBorderBlack).clickable { destinoId = c.id }.padding(vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else ColorTextDark)
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = montoText,
-                    onValueChange = { montoText = it },
-                    label = { Text("Monto ($)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(value = montoText, onValueChange = { montoText = it }, label = { Text("Monto ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) {
-                        Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) { Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
-                        val monto = montoText.toDoubleOrNull() ?: 0.0
-                        if (monto > 0 && origenId != destinoId) {
-                            onTransferir(origenId, destinoId, monto)
+                        val m = montoText.toDoubleOrNull() ?: 0.0
+                        if (m > 0) {
+                            onTransferir(origenId, destinoId, m)
                             onDismiss()
                         }
-                    }) {
-                        Text("TRANSFERIR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                    }) { Text("TRANSFERIR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -1028,81 +722,62 @@ fun FormularioTransferenciaDialog(cuentas: List<Cuenta>, onDismiss: () -> Unit, 
 }
 
 @Composable
-fun FormularioMovimientoDialog(tipo: TipoMovimiento, cuentas: List<Cuenta>, onDismiss: () -> Unit, onGuardar: (concepto: String, monto: Double, cuentaId: String, esFijo: Boolean) -> Unit) {
-    var concepto by remember { mutableStateOf("") }
+fun FormularioCrearMetaDialog(onDismiss: () -> Unit, onGuardar: (String, Double) -> Unit) {
+    var titulo by remember { mutableStateOf("") }
     var montoText by remember { mutableStateOf("") }
-    var cuentaIdSeleccionada by remember { mutableStateOf(cuentas.firstOrNull()?.id ?: "1") }
-    var esFijoSeleccionado by remember { mutableStateOf(false) }
-
-    val esIngreso = tipo == TipoMovimiento.INGRESO
-    val tituloHeader = if (esIngreso) "REGISTRAR INGRESO" else "REGISTRAR GASTO / PAGO"
 
     Dialog(onDismissRequest = onDismiss) {
         Box {
             Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
-            Column(
-                modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(text = tituloHeader, fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
-                OutlinedTextField(
-                    value = concepto,
-                    onValueChange = { concepto = it },
-                    label = { Text("Concepto / Descripción") },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = montoText,
-                    onValueChange = { montoText = it },
-                    label = { Text("Monto ($)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text("TIPO DE TRANSACCIÓN:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(
-                        modifier = Modifier.weight(1f).background(if (!esFijoSeleccionado) ColorPrimaryRed else Color.White).border(2.dp, ColorBorderBlack).clickable { esFijoSeleccionado = false }.padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("EXTRA / PUNTUAL", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (!esFijoSeleccionado) Color.White else ColorTextDark)
-                    }
-                    Box(
-                        modifier = Modifier.weight(1f).background(if (esFijoSeleccionado) ColorPrimaryRed else Color.White).border(2.dp, ColorBorderBlack).clickable { esFijoSeleccionado = true }.padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("FIJO / RECURRENTE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (esFijoSeleccionado) Color.White else ColorTextDark)
-                    }
-                }
-                Text("SELECCIONA CUENTA:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    cuentas.forEach { cuenta ->
-                        val seleccionada = cuenta.id == cuentaIdSeleccionada
-                        Box(
-                            modifier = Modifier.weight(1f).background(if (seleccionada) ColorHeaderBg else Color.White).border(2.dp, ColorBorderBlack).clickable { cuentaIdSeleccionada = cuenta.id }.padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(cuenta.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (seleccionada) Color.White else ColorTextDark, textAlign = TextAlign.Center)
-                        }
-                    }
-                }
+            Column(modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "NUEVA META DE AHORRO", fontSize = 18.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                OutlinedTextField(value = titulo, onValueChange = { titulo = it }, label = { Text("Título / Objetivo") }, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = montoText, onValueChange = { montoText = it }, label = { Text("Monto Objetivo ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) {
-                        Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) { Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
-                        val montoParsed = montoText.toDoubleOrNull() ?: 0.0
-                        if (montoParsed > 0) {
-                            onGuardar(concepto, montoParsed, cuentaIdSeleccionada, esFijoSeleccionado)
-                            onDismiss()
-                        }
-                    }) {
-                        Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
+                        val m = montoText.toDoubleOrNull() ?: 0.0
+                        if (m > 0) onGuardar(titulo, m)
+                    }) { Text("CREAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun FormularioAbonarMetaDialog(meta: MetaAhorro, cuentas: List<Cuenta>, onDismiss: () -> Unit, onAbonar: (Double, String) -> Unit) {
+    var montoText by remember { mutableStateOf("") }
+    var cuentaIdSeleccionada by remember { mutableStateOf(cuentas.firstOrNull()?.id ?: "1") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box {
+            Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
+            Column(modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "ABONAR A: ${meta.titulo}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                OutlinedTextField(value = montoText, onValueChange = { montoText = it }, label = { Text("Monto del Abono ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = ColorBorderBlack, unfocusedBorderColor = ColorBorderBlack, focusedContainerColor = Color.White, unfocusedContainerColor = Color.White), singleLine = true, modifier = Modifier.fillMaxWidth())
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) { Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                    NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = {
+                        val m = montoText.toDoubleOrNull() ?: 0.0
+                        if (m > 0) onAbonar(m, cuentaIdSeleccionada)
+                    }) { Text("ABONAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OpcionesMovimientoDialog(movimiento: Movimiento, onDismiss: () -> Unit, onEliminar: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Box {
+            Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(ColorBorderBlack))
+            Column(modifier = Modifier.fillMaxWidth().background(ColorScreenBg).border(3.dp, ColorBorderBlack).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "ELIMINAR REGISTRO", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+                Text(text = "${movimiento.concepto} -$${String.format("%.2f", movimiento.monto)}", fontSize = 13.sp, color = ColorTextMuted)
+                NeoBrutalButton(containerColor = ColorPrimaryRed, contentColor = Color.White, onClick = onEliminar) { Text("ELIMINAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                NeoBrutalButton(containerColor = Color.White, contentColor = ColorTextDark, onClick = onDismiss) { Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
             }
         }
     }
@@ -1115,30 +790,12 @@ fun ItemMovimientoCard(movimiento: Movimiento, onClick: () -> Unit = {}) {
     val colorMonto = if (esIngreso) Color(0xFF2E7D32) else ColorPrimaryRed
 
     NeoBrutalCard(modifier = Modifier.clickable { onClick() }) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconBox3D(
-                    icon = if (esIngreso) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                    size = 36.dp,
-                    iconSize = 20.dp,
-                    bgColor = if (esIngreso) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                    tint = colorMonto
-                )
+                IconBox3D(icon = if (esIngreso) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward, size = 36.dp, iconSize = 20.dp, bgColor = if (esIngreso) Color(0xFFE8F5E9) else Color(0xFFFFEBEE), tint = colorMonto)
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = movimiento.concepto, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
-                        if (movimiento.esFijo) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Box(modifier = Modifier.background(ColorHeaderBg).padding(horizontal = 4.dp, vertical = 1.dp)) {
-                                Text(text = "FIJO", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-                        }
-                    }
+                    Text(text = movimiento.concepto, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ColorTextDark)
                     Text(text = movimiento.fecha, fontSize = 10.sp, color = ColorTextMuted)
                 }
             }
@@ -1148,21 +805,10 @@ fun ItemMovimientoCard(movimiento: Movimiento, onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun PantallaProximamenteContent(seccion: String) {
-    DashedContainer {
-        Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-            Text(text = "SECCIÓN $seccion\nEN DESARROLLO", fontSize = 16.sp, fontWeight = FontWeight.Black, color = ColorTextDark, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
 fun NeoBrutalCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(modifier = modifier) {
         Box(modifier = Modifier.matchParentSize().offset(x = 4.dp, y = 4.dp).background(ColorBorderBlack))
-        Box(modifier = Modifier.fillMaxWidth().background(Color.White).border(2.dp, ColorBorderBlack)) {
-            content()
-        }
+        Box(modifier = Modifier.fillMaxWidth().background(Color.White).border(2.dp, ColorBorderBlack)) { content() }
     }
 }
 
@@ -1171,9 +817,7 @@ fun NeoBrutalButton(modifier: Modifier = Modifier, containerColor: Color, conten
     Box(modifier = modifier.clickable { onClick() }) {
         Box(modifier = Modifier.matchParentSize().offset(x = 3.dp, y = 3.dp).background(ColorBorderBlack))
         Box(modifier = Modifier.fillMaxWidth().background(containerColor).border(2.dp, ColorBorderBlack).padding(vertical = 10.dp, horizontal = 12.dp), contentAlignment = Alignment.Center) {
-            CompositionLocalProvider(LocalContentColor provides contentColor) {
-                content()
-            }
+            CompositionLocalProvider(LocalContentColor provides contentColor) { content() }
         }
     }
 }
@@ -1192,7 +836,7 @@ fun MetricMiniCard(modifier: Modifier = Modifier, title: String, value: String, 
             IconBox3D(icon = icon, size = 32.dp, iconSize = 18.dp, bgColor = iconBg, tint = iconTint)
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = title, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ColorTextMuted)
-            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
+            Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Black, color = ColorTextDark)
         }
     }
 }
@@ -1200,9 +844,7 @@ fun MetricMiniCard(modifier: Modifier = Modifier, title: String, value: String, 
 @Composable
 fun DashedContainer(content: @Composable () -> Unit) {
     val stroke = Stroke(width = 4f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f))
-    Box(modifier = Modifier.fillMaxWidth().drawWithContent { drawContent(); drawRect(color = ColorBorderBlack, style = stroke) }.background(ColorScreenBg)) {
-        content()
-    }
+    Box(modifier = Modifier.fillMaxWidth().drawWithContent { drawContent(); drawRect(color = ColorBorderBlack, style = stroke) }.background(ColorScreenBg)) { content() }
 }
 
 @Composable
@@ -1217,21 +859,11 @@ fun BottomNavigationBar(seccionActual: String, onSeccionSelected: (String) -> Un
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(ColorBorderBlack))
-        Row(
-            modifier = Modifier.fillMaxWidth().background(ColorScreenBg).padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxWidth().background(ColorScreenBg).padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
             items.forEach { (id, icon, label) ->
                 val seleccionado = seccionActual == id
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { onSeccionSelected(id) }.padding(horizontal = 4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.size(32.dp).then(if (seleccionado) Modifier.background(Color.White).border(2.dp, ColorBorderBlack) else Modifier),
-                        contentAlignment = Alignment.Center
-                    ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onSeccionSelected(id) }.padding(horizontal = 4.dp)) {
+                    Box(modifier = Modifier.size(32.dp).then(if (seleccionado) Modifier.background(Color.White).border(2.dp, ColorBorderBlack) else Modifier), contentAlignment = Alignment.Center) {
                         Icon(imageVector = icon, contentDescription = label, tint = if (seleccionado) ColorPrimaryRed else ColorTextDark, modifier = Modifier.size(20.dp))
                     }
                     Spacer(modifier = Modifier.height(2.dp))
