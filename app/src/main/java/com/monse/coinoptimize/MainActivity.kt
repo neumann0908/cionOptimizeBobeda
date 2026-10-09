@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// --- PALETA DE COLORES (REPLICA EXACTA) ---
+// --- PALETA DE COLORES ---
 val ColorHeaderBg = Color(0xFF141414)
 val ColorScreenBg = Color(0xFFF4EFE6)
 val ColorPrimaryRed = Color(0xFFC82323)
@@ -74,7 +74,7 @@ fun CajaFuerteMainScreen() {
                 }
             }
 
-            // 3. BARRA DE NAVEGACIÓN INFERIOR (5 PESTAÑAS)
+            // 3. BARRA DE NAVEGACIÓN INFERIOR
             BottomNavigationBar(
                 seccionActual = seccionSeleccionada,
                 onSeccionSelected = { seccionSeleccionada = it }
@@ -95,7 +95,6 @@ fun TopHeaderBar(seccionActual: String) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Logo rojo con [X]
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -130,7 +129,6 @@ fun TopHeaderBar(seccionActual: String) {
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Badge Fecha
             Box(
                 modifier = Modifier
                     .background(ColorPrimaryRed)
@@ -144,7 +142,6 @@ fun TopHeaderBar(seccionActual: String) {
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            // Botón Salir
             Button(
                 onClick = { },
                 colors = ButtonDefaults.buttonColors(containerColor = ColorPrimaryRed),
@@ -172,7 +169,6 @@ fun TopHeaderBar(seccionActual: String) {
 // --- CONTENIDO PANTALLA INICIO ---
 @Composable
 fun PantallaInicioContent() {
-    // Tarjeta Balance Neto
     NeoBrutalCard {
         Row(
             modifier = Modifier
@@ -201,7 +197,6 @@ fun PantallaInicioContent() {
         }
     }
 
-    // Tarjeta Presupuesto Mensual
     NeoBrutalCard {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -229,7 +224,6 @@ fun PantallaInicioContent() {
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            // Barra de progreso
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -257,7 +251,6 @@ fun PantallaInicioContent() {
         }
     }
 
-    // Botones de Acción (+ INGRESO EXTRA / REGISTRAR PAGO)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -309,7 +302,6 @@ fun PantallaInicioContent() {
         }
     }
 
-    // Sección Próximos Vencimientos
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -330,7 +322,6 @@ fun PantallaInicioContent() {
         )
     }
 
-    // Contenedor con Borde Punteado (Empty State)
     DashedContainer {
         Column(
             modifier = Modifier
@@ -473,8 +464,7 @@ fun PantallaProximamenteContent(seccion: String) {
     }
 }
 
-// --- COMPONENTES NEO-BRUTALISTAS REUTILIZABLES ---
-
+// --- COMPONENTES NEO-BRUTALISTAS ---
 @Composable
 fun NeoBrutalCard(
     modifier: Modifier = Modifier,
@@ -608,7 +598,7 @@ fun DashedContainer(
     }
 }
 
-// --- BARRA DE NAVEGACIÓN INFERIOR (5 PESTAÑAS) ---
+// --- BARRA DE NAVEGACIÓN INFERIOR ---
 @Composable
 fun BottomNavigationBar(
     seccionActual: String,
@@ -622,49 +612,57 @@ fun BottomNavigationBar(
         Triple("AJUSTES", Icons.Default.Settings, "AJUSTES")
     )
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(ColorScreenBg)
-            .border(top = androidx.compose.foundation.BorderStroke(2.dp, ColorBorderBlack))
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        items.forEach { (id, icon, label) ->
-            val seleccionado = seccionActual == id
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clickable { onSeccionSelected(id) }
-                    .padding(horizontal = 4.dp)
-            ) {
-                Box(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(ColorBorderBlack)
+        )
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(ColorScreenBg)
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { (id, icon, label) ->
+                val seleccionado = seccionActual == id
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .size(32.dp)
-                        .then(
-                            if (seleccionado) {
-                                Modifier
-                                    .background(Color.White)
-                                    .border(2.dp, ColorBorderBlack)
-                            } else Modifier
-                        ),
-                    contentAlignment = Alignment.Center
+                        .clickable { onSeccionSelected(id) }
+                        .padding(horizontal = 4.dp)
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label,
-                        tint = if (seleccionado) ColorPrimaryRed else ColorTextDark,
-                        modifier = Modifier.size(20.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .then(
+                                if (seleccionado) {
+                                    Modifier
+                                        .background(Color.White)
+                                        .border(2.dp, ColorBorderBlack)
+                                } else Modifier
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = if (seleccionado) ColorPrimaryRed else ColorTextDark,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = label,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (seleccionado) ColorPrimaryRed else ColorTextDark
                     )
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = label,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (seleccionado) ColorPrimaryRed else ColorTextDark
-                )
             }
         }
     }
