@@ -1,47 +1,48 @@
 package com.monse.coinoptimize
 
+import android.app.Application
 import androidx.compose.runtime.mutableStateListOf
-import androidx.lifecycle.ViewModel
-import com.monse.coinoptimize.data.Cuenta
-import com.monse.coinoptimize.data.Movimiento
-import com.monse.coinoptimize.data.TipoCuenta
-import com.monse.coinoptimize.data.TipoMovimiento
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.monse.coinoptimize.data.*
+import kotlinx.coroutines.launch
 import java.util.UUID
 
-class MainViewModel : ViewModel() {
+class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    // Lista de Cuentas en memoria
-    val cuentas = mutableStateListOf<Cuenta>(
-        Cuenta(id = "1", nombre = "EFECTIVO", saldoActual = 150.0, tipo = TipoCuenta.EFECTIVO),
-        Cuenta(id = "2", nombre = "BANCO PRINCIPAL", saldoActual = 520.0, tipo = TipoCuenta.BANCO),
-        Cuenta(id = "3", nombre = "CAJA FUERTE", saldoActual = 1200.0, tipo = TipoCuenta.AHORRO)
-    )
+    private val dao = AppDatabase.getDatabase(application).appDao()
 
-    // Lista de Movimientos con datos de prueba
-    val movimientos = mutableStateListOf<Movimiento>(
-        Movimiento(
-            id = "m1",
-            concepto = "Pago Freelance Kotlin",
-            monto = 350.0,
-            tipo = TipoMovimiento.INGRESO,
-            fecha = "05 OCT 2026",
-            cuentaId = "2",
-            esFijo = false
-        ),
-        Movimiento(
-            id = "m2",
-            concepto = "Supermercado y Despensa",
-            monto = 85.0,
-            tipo = TipoMovimiento.GASTO,
-            fecha = "07 OCT 2026",
-            cuentaId = "1",
-            esFijo = false
-        )
-    )
+    val cuentas = mutableStateListOf<Cuenta>()
+    val movimientos = mutableStateListOf<Movimiento>()
+
+    init {
+        // Escuchar Cuentas desde SQLite
+        viewModelScope.launch {
+            dao.obtenerTodasLasCuentas().collect { listaCuentas ->
+                cuentas.clear()
+                if (listaCuentas.isEmpty()) {
+                    val cuentasIniciales = listOf(
+                        Cuenta(id = "1", nombre = "EFECTIVO", saldoActual = 150.0, tipo = TipoCuenta.EFECTIVO),
+                        Cuenta(id = "2", nombre = "BANCO PRINCIPAL", saldoActual = 520.0, tipo = TipoCuenta.BANCO),
+                        Cuenta(id = "3", nombre = "CAJA FUERTE", saldoActual = 1200.0, tipo = TipoCuenta.AHORRO)
+                    )
+                    dao.insertarCuentas(cuentasIniciales)
+                } else {
+                    cuentas.addAll(listaCuentas)
+                }
+            }
+        }
+
+        // Escuchar Movimientos desde SQLite
+        viewModelScope.launch {
+            dao.obtenerTodosLosMovimientos().collect { listaMovimientos ->
+                movimientos.clear()
+                movimientos.addAll(listaMovimientos)
+            }
+        }
+    }
 
     // --- CÁLCULOS DINÁMICOS ---
-
-    // Balance Total = Suma de saldos de todas las cuentas + Ingresos - Gastos
     val balanceNeto: Double
         get() {
             val saldoBaseCuentas = cuentas.sumOf { it.saldoActual }
@@ -60,17 +61,18 @@ class MainViewModel : ViewModel() {
         get() = movimientos.size
 
     // --- ACCIONES ---
-
     fun agregarMovimiento(concepto: String, monto: Double, tipo: TipoMovimiento, cuentaId: String) {
-        val nuevoMovimiento = Movimiento(
-            id = UUID.randomUUID().toString(),
-            concepto = concepto.ifBlank { "Sin descripción" },
-            monto = monto,
-            tipo = tipo,
-            fecha = "OCT 2026",
-            cuentaId = cuentaId,
-            esFijo = false
-        )
-        movimientos.add(0, nuevoMovimiento) // Agregar al inicio del historial
+        viewModelScope.launch {
+            val nuevoMovimiento = Movimiento(
+                id = UUID.randomUUID().toString(),
+                concepto = concepto.ifBlank { "Sin descripción" },
+                monto = monto,
+                tipo = tipo,
+                fecha = "OCT 2026",
+                cuentaId = cuentaId,
+                esFijo = false
+            )
+            dao.insertarMovimiento(nuevoMovimiento)
+        }
     }
 }
