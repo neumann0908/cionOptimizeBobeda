@@ -14,6 +14,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val cuentas = mutableStateListOf<Cuenta>()
     val movimientos = mutableStateListOf<Movimiento>()
+    val metasAhorro = mutableStateListOf<MetaAhorro>()
 
     init {
         // Escuchar Cuentas desde SQLite
@@ -40,6 +41,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 movimientos.addAll(listaMovimientos)
             }
         }
+
+        // Escuchar Metas de Ahorro desde SQLite
+        viewModelScope.launch {
+            dao.obtenerTodasLasMetas().collect { listaMetas ->
+                metasAhorro.clear()
+                if (listaMetas.isEmpty()) {
+                    val metaInicial = MetaAhorro(
+                        id = UUID.randomUUID().toString(),
+                        titulo = "FONDO DE EMERGENCIA",
+                        montoObjetivo = 1000.0,
+                        montoActual = 250.0
+                    )
+                    dao.insertarMeta(metaInicial)
+                } else {
+                    metasAhorro.addAll(listaMetas)
+                }
+            }
+        }
     }
 
     // CÁLCULOS
@@ -61,7 +80,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val cantidadRegistros: Int
         get() = movimientos.size
 
-    // ACCIONES
+    // ACCIONES DE MOVIMIENTOS
     fun agregarMovimiento(
         concepto: String, 
         monto: Double, 
@@ -83,6 +102,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun editarMovimiento(movimientoActualizado: Movimiento) {
+        viewModelScope.launch {
+            dao.insertarMovimiento(movimientoActualizado)
+        }
+    }
+
+    fun eliminarMovimiento(movimiento: Movimiento) {
+        viewModelScope.launch {
+            dao.eliminarMovimiento(movimiento)
+        }
+    }
+
     fun realizarTransferencia(origenId: String, destinoId: String, monto: Double) {
         if (origenId == destinoId || monto <= 0) return
         viewModelScope.launch {
@@ -90,10 +121,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val destino = cuentas.find { it.id == destinoId }
 
             if (origen != null && destino != null) {
-                // Registrar salida de origen y entrada en destino
                 agregarMovimiento("Transferencia a ${destino.nombre}", monto, TipoMovimiento.GASTO, origenId)
                 agregarMovimiento("Transferencia desde ${origen.nombre}", monto, TipoMovimiento.INGRESO, destinoId)
             }
+        }
+    }
+
+    // ACCIONES DE METAS DE AHORRO
+    fun agregarMetaAhorro(titulo: String, montoObjetivo: Double) {
+        viewModelScope.launch {
+            val nuevaMeta = MetaAhorro(
+                id = UUID.randomUUID().toString(),
+                titulo = titulo.ifBlank { "NUEVA META" },
+                montoObjetivo = montoObjetivo,
+                montoActual = 0.0
+            )
+            dao.insertarMeta(nuevaMeta)
+        }
+    }
+
+    fun abonarAMeta(meta: MetaAhorro, montoAbono: Double, cuentaId: String) {
+        if (montoAbono <= 0) return
+        viewModelScope.launch {
+            val metaActualizada = meta.copy(montoActual = meta.montoActual + montoAbono)
+            dao.insertarMeta(metaActualizada)
+            // Registrar como salida/gasto hacia el ahorro
+            agregarMovimiento("Abono a Meta: ${meta.titulo}", montoAbono, TipoMovimiento.GASTO, cuentaId)
+        }
+    }
+
+    fun eliminarMeta(meta: MetaAhorro) {
+        viewModelScope.launch {
+            dao.eliminarMeta(meta)
         }
     }
 }
