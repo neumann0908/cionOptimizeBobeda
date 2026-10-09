@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +30,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monse.coinoptimize.data.Cuenta
 import com.monse.coinoptimize.data.Movimiento
 import com.monse.coinoptimize.data.TipoMovimiento
@@ -38,7 +41,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                val viewModel = remember { MainViewModel() }
+                val context = LocalContext.current
+                val viewModel: MainViewModel = viewModel(
+                    factory = ViewModelProvider.AndroidViewModelFactory.getInstance(
+                        context.applicationContext as android.app.Application
+                    )
+                )
                 CajaFuerteMainScreen(viewModel = viewModel)
             }
         }
@@ -289,7 +297,6 @@ fun PantallaInicioContent(
         }
     }
 
-    // Botones de Acción Interáctivos
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -503,14 +510,12 @@ fun FormularioMovimientoDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Box {
-            // Sombra desplazada
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .offset(x = 6.dp, y = 6.dp)
                     .background(ColorBorderBlack)
             )
-            // Contenedor principal
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -527,7 +532,6 @@ fun FormularioMovimientoDialog(
                     letterSpacing = 0.5.sp
                 )
 
-                // Campo Concepto
                 OutlinedTextField(
                     value = concepto,
                     onValueChange = { concepto = it },
@@ -542,7 +546,6 @@ fun FormularioMovimientoDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Campo Monto
                 OutlinedTextField(
                     value = montoText,
                     onValueChange = { montoText = it },
@@ -558,7 +561,6 @@ fun FormularioMovimientoDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Selector de Cuenta
                 Text(
                     text = "SELECCIONA CUENTA:",
                     fontSize = 11.sp,
@@ -593,7 +595,6 @@ fun FormularioMovimientoDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Botones Cancelar / Guardar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
