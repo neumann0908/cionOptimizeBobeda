@@ -26,19 +26,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.monse.coinoptimize.data.Movimiento
+import com.monse.coinoptimize.data.TipoMovimiento
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                CajaFuerteMainScreen()
+                val viewModel = remember { MainViewModel() }
+                CajaFuerteMainScreen(viewModel = viewModel)
             }
         }
     }
 }
 
-// --- PALETA DE COLORES ---
+// --- PALETA DE COLORES NEO-BRUTALISTA ---
 val ColorHeaderBg = Color(0xFF141414)
 val ColorScreenBg = Color(0xFFF4EFE6)
 val ColorPrimaryRed = Color(0xFFC82323)
@@ -48,7 +51,7 @@ val ColorTextDark = Color(0xFF1A1A1A)
 val ColorTextMuted = Color(0xFF666666)
 
 @Composable
-fun CajaFuerteMainScreen() {
+fun CajaFuerteMainScreen(viewModel: MainViewModel) {
     var seccionSeleccionada by remember { mutableStateOf("INICIO") }
 
     Surface(
@@ -68,8 +71,8 @@ fun CajaFuerteMainScreen() {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 when (seccionSeleccionada) {
-                    "INICIO" -> PantallaInicioContent()
-                    "MOVIMIENTOS" -> PantallaMovimientosContent()
+                    "INICIO" -> PantallaInicioContent(viewModel)
+                    "MOVIMIENTOS" -> PantallaMovimientosContent(viewModel)
                     else -> PantallaProximamenteContent(seccionSeleccionada)
                 }
             }
@@ -168,7 +171,8 @@ fun TopHeaderBar(seccionActual: String) {
 
 // --- CONTENIDO PANTALLA INICIO ---
 @Composable
-fun PantallaInicioContent() {
+fun PantallaInicioContent(viewModel: MainViewModel) {
+    // Balance Neto Calculado Dinámicamente
     NeoBrutalCard {
         Row(
             modifier = Modifier
@@ -187,7 +191,7 @@ fun PantallaInicioContent() {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "$0.00",
+                    text = "$${String.format("%.2f", viewModel.balanceNeto)}",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
                     color = ColorTextDark
@@ -197,6 +201,7 @@ fun PantallaInicioContent() {
         }
     }
 
+    // Presupuesto y Gastado del mes
     NeoBrutalCard {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -236,7 +241,7 @@ fun PantallaInicioContent() {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "GASTADO $0.00",
+                    text = "GASTADO $${String.format("%.2f", viewModel.totalGastosMes)}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = ColorTextMuted
@@ -251,6 +256,7 @@ fun PantallaInicioContent() {
         }
     }
 
+    // Botones de Acción
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -302,6 +308,7 @@ fun PantallaInicioContent() {
         }
     }
 
+    // Sección Vencimientos
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -355,7 +362,7 @@ fun PantallaInicioContent() {
 
 // --- CONTENIDO PANTALLA MOVIMIENTOS ---
 @Composable
-fun PantallaMovimientosContent() {
+fun PantallaMovimientosContent(viewModel: MainViewModel) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -363,7 +370,7 @@ fun PantallaMovimientosContent() {
         MetricMiniCard(
             modifier = Modifier.weight(1f),
             title = "TOTAL DEL MES",
-            value = "$0.00",
+            value = "$${String.format("%.2f", viewModel.totalIngresosMes)}",
             icon = Icons.Default.TrendingUp,
             iconBg = ColorPrimaryRed,
             iconTint = Color.White
@@ -371,7 +378,7 @@ fun PantallaMovimientosContent() {
         MetricMiniCard(
             modifier = Modifier.weight(1f),
             title = "REGISTROS",
-            value = "0",
+            value = "${viewModel.cantidadRegistros}",
             icon = Icons.Default.Tag,
             iconBg = ColorGreyIconBox,
             iconTint = ColorTextDark
@@ -406,40 +413,88 @@ fun PantallaMovimientosContent() {
         }
     }
 
-    DashedContainer {
-        Column(
+    if (viewModel.movimientos.isEmpty()) {
+        DashedContainer {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                IconBox3D(
+                    icon = Icons.Default.Paid,
+                    size = 54.dp,
+                    iconSize = 32.dp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "SIN INGRESOS EXTRA",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black,
+                    color = ColorTextDark
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Anota ingresos puntuales fuera de tu flujo fijo y míralos sumar al balance del mes.",
+                    fontSize = 12.sp,
+                    color = ColorTextMuted,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            viewModel.movimientos.forEach { movimiento ->
+                ItemMovimientoCard(movimiento = movimiento)
+            }
+        }
+    }
+}
+
+// --- TARJETA PARA CADA MOVIMIENTO EN EL HISTORIAL ---
+@Composable
+fun ItemMovimientoCard(movimiento: Movimiento) {
+    val esIngreso = movimiento.tipo == TipoMovimiento.INGRESO
+    val signo = if (esIngreso) "+" else "-"
+    val colorMonto = if (esIngreso) Color(0xFF2E7D32) else ColorPrimaryRed
+
+    NeoBrutalCard {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            IconBox3D(
-                icon = Icons.Default.Paid,
-                size = 54.dp,
-                iconSize = 32.dp
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "SIN INGRESOS EXTRA",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Black,
-                color = ColorTextDark
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Anota ingresos puntuales fuera de tu flujo fijo y míralos sumar al balance del mes.",
-                fontSize = 12.sp,
-                color = ColorTextMuted,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            NeoBrutalButton(
-                containerColor = ColorPrimaryRed,
-                contentColor = Color.White,
-                onClick = { }
-            ) {
-                Text("REGISTRAR INGRESO", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconBox3D(
+                    icon = if (esIngreso) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    size = 36.dp,
+                    iconSize = 20.dp,
+                    bgColor = if (esIngreso) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                    tint = colorMonto
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = movimiento.concepto,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ColorTextDark
+                    )
+                    Text(
+                        text = movimiento.fecha,
+                        fontSize = 10.sp,
+                        color = ColorTextMuted
+                    )
+                }
             }
+            Text(
+                text = "$signo$${String.format("%.2f", movimiento.monto)}",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                color = colorMonto
+            )
         }
     }
 }
