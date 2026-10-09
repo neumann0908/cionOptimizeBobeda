@@ -5,8 +5,9 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Cuenta::class, Movimiento::class, MetaAhorro::class], version = 2, exportSchema = false)
+@Database(entities = [Cuenta::class, Movimiento::class, MetaAhorro::class, CuentaPorPagar::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
+
     abstract fun appDao(): AppDao
 
     companion object {
@@ -18,7 +19,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "coinoptimize_database"
+                    "caja_fuerte_db"
                 )
                 .fallbackToDestructiveMigration()
                 .build()
