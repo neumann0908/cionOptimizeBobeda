@@ -42,14 +42,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- CÁLCULOS DINÁMICOS ---
+    // CÁLCULOS
     val balanceNeto: Double
-        get() {
-            val saldoBaseCuentas = cuentas.sumOf { it.saldoActual }
-            val totalIngresos = movimientos.filter { it.tipo == TipoMovimiento.INGRESO }.sumOf { it.monto }
-            val totalGastos = movimientos.filter { it.tipo == TipoMovimiento.GASTO }.sumOf { it.monto }
-            return saldoBaseCuentas + totalIngresos - totalGastos
-        }
+        get() = cuentas.sumOf { obtenerSaldoRealCuenta(it) }
+
+    fun obtenerSaldoRealCuenta(cuenta: Cuenta): Double {
+        val ingresos = movimientos.filter { it.cuentaId == cuenta.id && it.tipo == TipoMovimiento.INGRESO }.sumOf { it.monto }
+        val gastos = movimientos.filter { it.cuentaId == cuenta.id && it.tipo == TipoMovimiento.GASTO }.sumOf { it.monto }
+        return cuenta.saldoActual + ingresos - gastos
+    }
 
     val totalIngresosMes: Double
         get() = movimientos.filter { it.tipo == TipoMovimiento.INGRESO }.sumOf { it.monto }
@@ -60,7 +61,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val cantidadRegistros: Int
         get() = movimientos.size
 
-    // --- ACCIONES ---
+    // ACCIONES
     fun agregarMovimiento(
         concepto: String, 
         monto: Double, 
@@ -79,6 +80,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 esFijo = esFijo
             )
             dao.insertarMovimiento(nuevoMovimiento)
+        }
+    }
+
+    fun realizarTransferencia(origenId: String, destinoId: String, monto: Double) {
+        if (origenId == destinoId || monto <= 0) return
+        viewModelScope.launch {
+            val origen = cuentas.find { it.id == origenId }
+            val destino = cuentas.find { it.id == destinoId }
+
+            if (origen != null && destino != null) {
+                // Registrar salida de origen y entrada en destino
+                agregarMovimiento("Transferencia a ${destino.nombre}", monto, TipoMovimiento.GASTO, origenId)
+                agregarMovimiento("Transferencia desde ${origen.nombre}", monto, TipoMovimiento.INGRESO, destinoId)
+            }
         }
     }
 }
