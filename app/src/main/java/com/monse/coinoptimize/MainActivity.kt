@@ -1,5 +1,6 @@
 package com.monse.coinoptimize
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -87,6 +88,7 @@ val DarkTheme = AppThemeColors(
 
 @Composable
 fun CajaFuerteMainScreen(viewModel: MainViewModel) {
+    val context = LocalContext.current
     var seccionSeleccionada by remember { mutableStateOf("INICIO") }
     var subSeccionMovimientos by remember { mutableStateOf("MENU") }
 
@@ -142,6 +144,7 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                             esFijoForm = fijo
                             mostrarFormulario = true
                         },
+                        onAbrirCrearDeuda = { mostrarCrearDeuda = true },
                         onSeleccionarMovimiento = { movimientoSeleccionado = it }
                     )
                     "MOVIMIENTOS" -> PantallaCentroOperacionesContent(
@@ -189,10 +192,8 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
             BottomNavigationBar(
                 seccionActual = seccionSeleccionada,
                 theme = theme,
-                onSeccionSelected = {
-                    seccionSeleccionada = it
-                    subSeccionMovimientos = "MENU"
-                }
+                onSeccionSelected = { seccionSeleccionada = it },
+                onSalir = { (context as? Activity)?.finish() }
             )
         }
 
@@ -288,62 +289,67 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
 
 @Composable
 fun TopHeaderBar(seccionActual: String, mesActual: String, theme: AppThemeColors) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(theme.headerBg)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.matchParentSize().offset(y = 4.dp).background(theme.borderBlack))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(theme.headerBg)
+                .border(2.dp, theme.borderBlack)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(theme.primaryRed)
+                        .border(1.5.dp, theme.borderBlack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "CAJA FUERTE",
+                        color = theme.primaryRed,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = seccionActual.replace("_", " "),
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+
             Box(
                 modifier = Modifier
-                    .size(36.dp)
                     .background(theme.primaryRed)
-                    .border(1.5.dp, theme.borderBlack),
-                contentAlignment = Alignment.Center
+                    .border(1.5.dp, theme.borderBlack)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
                 Text(
-                    text = "CAJA FUERTE",
-                    color = theme.primaryRed,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = seccionActual.replace("_", " "),
+                    text = when (seccionActual) {
+                        "AHORROS" -> "METAS Y PROGRESO"
+                        "AJUSTES" -> "CONFIGURACIÓN"
+                        else -> mesActual
+                    },
                     color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Black
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
-        }
-
-        Box(
-            modifier = Modifier
-                .background(theme.primaryRed)
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = when (seccionActual) {
-                    "AHORROS" -> "METAS Y PROGRESO"
-                    "AJUSTES" -> "CONFIGURACIÓN"
-                    else -> mesActual
-                },
-                color = Color.White,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }
@@ -354,6 +360,7 @@ fun PantallaInicioContent(
     theme: AppThemeColors,
     onIrAjustes: () -> Unit,
     onAbrirFormulario: (TipoMovimiento, Boolean) -> Unit,
+    onAbrirCrearDeuda: () -> Unit,
     onSeleccionarMovimiento: (Movimiento) -> Unit
 ) {
     Row(
@@ -448,7 +455,7 @@ fun PantallaInicioContent(
         }
     }
 
-    // ACCIONES RÁPIDAS EN DOS FILAS (INGRESO FIJO, INGRESO EXTRA Y REGISTRAR PAGO)
+    // ACCIONES RÁPIDAS EN INICIO (INGRESOS, PAGOS Y CUENTAS POR PAGAR)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -474,14 +481,38 @@ fun PantallaInicioContent(
             }
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            NeoBrutalButton(
+                modifier = Modifier.weight(1f),
+                containerColor = Color(0xFFB71C1C),
+                contentColor = Color.White,
+                theme = theme,
+                onClick = { onAbrirFormulario(TipoMovimiento.GASTO, true) }
+            ) {
+                Text(text = "+ PAGO FIJO", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            }
+            NeoBrutalButton(
+                modifier = Modifier.weight(1f),
+                containerColor = theme.primaryRed,
+                contentColor = Color.White,
+                theme = theme,
+                onClick = { onAbrirFormulario(TipoMovimiento.GASTO, false) }
+            ) {
+                Text(text = "REGISTRAR PAGO", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            }
+        }
+
         NeoBrutalButton(
             modifier = Modifier.fillMaxWidth(),
-            containerColor = theme.primaryRed,
+            containerColor = theme.headerBg,
             contentColor = Color.White,
             theme = theme,
-            onClick = { onAbrirFormulario(TipoMovimiento.GASTO, false) }
+            onClick = onAbrirCrearDeuda
         ) {
-            Text(text = "REGISTRAR PAGO", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text(text = "+ CUENTA POR PAGAR", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
     }
 
@@ -700,7 +731,7 @@ fun PantallaBalancesContent(
     TarjetaCategoriaBarra(titulo = "CUENTAS POR PAGAR", monto = deudasTotales, porcentaje = if (deudasTotales > 0) 100 else 0, theme = theme)
     TarjetaCategoriaBarra(titulo = "PAGOS FIJOS", monto = pagosFijosTotales, porcentaje = if (pagosFijosTotales > 0) 100 else 0, theme = theme)
 
-    GraficoTendencia6MesesCard(theme = theme)
+    GraficoTendenciaMensualCard(theme = theme, mesActual = mesActual, totalIngresos = viewModel.totalIngresosMes, totalGastos = viewModel.totalGastosMes)
 }
 
 @Composable
@@ -721,14 +752,14 @@ fun GraficoIngresosVsGastosCard(ingresos: Double, gastos: Double, theme: AppThem
                 modifier = Modifier.fillMaxWidth().height(130.dp).border(2.dp, theme.borderBlack).background(theme.screenBg).padding(12.dp)
             ) {
                 Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.Bottom) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom, modifier = Modifier.fillMaxHeight()) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Alignment.Bottom, modifier = Modifier.fillMaxHeight()) {
                         Text(text = "$${String.format("%.2f", ingresos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(modifier = Modifier.width(40.dp).fillMaxHeight(fraction = pctIngresos).background(theme.borderBlack))
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = "INGRESOS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = theme.textMuted)
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom, modifier = Modifier.fillMaxHeight()) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Alignment.Bottom, modifier = Modifier.fillMaxHeight()) {
                         Text(text = "$${String.format("%.2f", gastos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(modifier = Modifier.width(40.dp).fillMaxHeight(fraction = pctGastos).background(theme.borderBlack))
@@ -761,35 +792,23 @@ fun TarjetaCategoriaBarra(titulo: String, monto: Double, porcentaje: Int, theme:
 }
 
 @Composable
-fun GraficoTendencia6MesesCard(theme: AppThemeColors) {
+fun GraficoTendenciaMensualCard(theme: AppThemeColors, mesActual: String, totalIngresos: Double, totalGastos: Double) {
     NeoBrutalCard(theme = theme) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "TENDENCIA 6 MESES", fontSize = 12.sp, fontWeight = FontWeight.Black, color = theme.textDark)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(10.dp).background(Color(0xFF2E7D32)))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "ING", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(10.dp).background(theme.primaryRed))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "GAS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
-                    }
+                Text(text = "TENDENCIA MENSUAL ($mesActual)", fontSize = 12.sp, fontWeight = FontWeight.Black, color = theme.textDark)
+                Box(modifier = Modifier.background(theme.primaryRed).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                    Text(text = "ACTUAL", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(110.dp).border(2.dp, theme.borderBlack).background(theme.screenBg).padding(10.dp)) {
-                Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Bottom) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.Bottom) {
-                        listOf("10", "09", "08", "07", "06", "05").forEach { mes ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(modifier = Modifier.width(20.dp).height(4.dp).background(theme.borderBlack))
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(text = mes, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = theme.textMuted)
-                            }
-                        }
+            Box(modifier = Modifier.fillMaxWidth().height(100.dp).border(2.dp, theme.borderBlack).background(theme.screenBg).padding(12.dp)) {
+                Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "Resumen del Periodo", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                        Text(text = "Ingresos: +$${String.format("%.2f", totalIngresos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                        Text(text = "Gastos: -$${String.format("%.2f", totalGastos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = theme.primaryRed)
                     }
                 }
             }
@@ -1121,7 +1140,7 @@ fun FormularioCrearDeudaDialog(theme: AppThemeColors, onDismiss: () -> Unit, onG
                 OutlinedTextField(
                     value = vencimiento,
                     onValueChange = { vencimiento = it },
-                    label = { Text("Fecha de Vencimiento") },
+                    label = { Text("Fecha de Vencimiento / Pago") },
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = theme.borderBlack, unfocusedBorderColor = theme.borderBlack, focusedContainerColor = theme.cardBg, unfocusedContainerColor = theme.cardBg),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -1206,7 +1225,12 @@ fun FormularioMovimientoDialog(tipo: TipoMovimiento, esFijoInicial: Boolean, cue
                 modifier = Modifier.fillMaxWidth().background(theme.screenBg).border(3.dp, theme.borderBlack).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(text = if (tipo == TipoMovimiento.INGRESO) "REGISTRAR INGRESO" else "REGISTRAR GASTO", fontSize = 18.sp, fontWeight = FontWeight.Black, color = theme.textDark)
+                val tituloAccion = if (tipo == TipoMovimiento.INGRESO) {
+                    if (esFijo) "REGISTRAR INGRESO FIJO" else "REGISTRAR INGRESO EXTRA"
+                } else {
+                    if (esFijo) "REGISTRAR PAGO FIJO" else "REGISTRAR PAGO"
+                }
+                Text(text = tituloAccion, fontSize = 18.sp, fontWeight = FontWeight.Black, color = theme.textDark)
                 OutlinedTextField(
                     value = concepto,
                     onValueChange = { concepto = it },
@@ -1521,48 +1545,69 @@ fun DashedContainer(theme: AppThemeColors, content: @Composable () -> Unit) {
 }
 
 @Composable
-fun BottomNavigationBar(seccionActual: String, theme: AppThemeColors, onSeccionSelected: (String) -> Unit) {
+fun BottomNavigationBar(seccionActual: String, theme: AppThemeColors, onSeccionSelected: (String) -> Unit, onSalir: () -> Unit) {
     val items = listOf(
         Triple("INICIO", Icons.Default.AccountBalanceWallet, "INICIO"),
         Triple("MOVIMIENTOS", Icons.Default.SwapHoriz, "MOVIMIENTOS"),
         Triple("BALANCES", Icons.Default.Scale, "BALANCES"),
         Triple("AHORROS", Icons.Default.Savings, "AHORROS"),
-        Triple("AJUSTES", Icons.Default.Settings, "AJUSTES")
+        Triple("AJUSTES", Icons.Default.Settings, "AJUSTES"),
+        Triple("SALIR", Icons.Default.ExitToApp, "SALIR")
     )
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(theme.borderBlack))
-        Row(
-            modifier = Modifier.fillMaxWidth().background(theme.screenBg).padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.matchParentSize().offset(y = 4.dp).background(theme.borderBlack))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(theme.screenBg)
+                .border(2.dp, theme.borderBlack)
         ) {
-            items.forEach { (id, icon, label) ->
-                val seleccionado = seccionActual == id
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f).clickable { onSeccionSelected(id) }.padding(horizontal = 4.dp)
-                ) {
-                    Box(
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items.forEach { (id, icon, label) ->
+                    val seleccionado = seccionActual == id
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .size(32.dp)
-                            .then(if (seleccionado) Modifier.background(theme.cardBg).border(2.dp, theme.borderBlack) else Modifier),
-                        contentAlignment = Alignment.Center,
+                            .weight(1f)
+                            .clickable {
+                                if (id == "SALIR") {
+                                    onSalir()
+                                } else {
+                                    onSeccionSelected(id)
+                                }
+                            }
+                            .padding(horizontal = 2.dp)
                     ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = label,
-                            tint = if (seleccionado) theme.primaryRed else theme.textDark,
-                            modifier = Modifier.size(20.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .then(
+                                    if (seleccionado) Modifier.background(theme.cardBg).border(2.dp, theme.borderBlack)
+                                    else if (id == "SALIR") Modifier.background(theme.primaryRed.copy(alpha = 0.15f)).border(1.5.dp, theme.primaryRed)
+                                    else Modifier
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = label,
+                                tint = if (id == "SALIR") theme.primaryRed else if (seleccionado) theme.primaryRed else theme.textDark,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = label,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (id == "SALIR") theme.primaryRed else if (seleccionado) theme.primaryRed else theme.textDark
                         )
                     }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = label,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (seleccionado) theme.primaryRed else theme.textDark
-                    )
                 }
             }
         }
