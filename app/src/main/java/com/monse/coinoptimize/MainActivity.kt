@@ -751,14 +751,22 @@ fun GraficoIngresosVsGastosCard(ingresos: Double, gastos: Double, theme: AppThem
                 modifier = Modifier.fillMaxWidth().height(130.dp).border(2.dp, theme.borderBlack).background(theme.screenBg).padding(12.dp)
             ) {
                 Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.Bottom) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Alignment.Bottom, modifier = Modifier.fillMaxHeight()) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                        modifier = Modifier.fillMaxHeight()
+                    ) {
                         Text(text = "$${String.format("%.2f", ingresos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(modifier = Modifier.width(40.dp).fillMaxHeight(fraction = pctIngresos).background(theme.borderBlack))
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = "INGRESOS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = theme.textMuted)
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Alignment.Bottom, modifier = Modifier.fillMaxHeight()) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                        modifier = Modifier.fillMaxHeight()
+                    ) {
                         Text(text = "$${String.format("%.2f", gastos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(modifier = Modifier.width(40.dp).fillMaxHeight(fraction = pctGastos).background(theme.borderBlack))
