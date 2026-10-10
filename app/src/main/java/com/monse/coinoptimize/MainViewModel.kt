@@ -21,7 +21,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val cuentasPorPagar = mutableStateListOf<CuentaPorPagar>()
 
     var presupuestoMensual by mutableStateOf(0.0)
-    var modoBalances by mutableStateOf("MENSUAL") // "SEMANAL" o "MENSUAL"
+    var modoBalances by mutableStateOf("MENSUAL")
     var periodoActual by mutableStateOf("OCT 2026")
 
     init {
@@ -29,10 +29,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             dao.obtenerTodasLasCuentas().collect { listaCuentas ->
                 cuentas.clear()
                 if (listaCuentas.isEmpty()) {
+                    // Cuentas iniciales en 0.0 para empezar completamente limpio
                     val cuentasIniciales = listOf(
-                        Cuenta(id = "1", nombre = "EFECTIVO", saldoActual = 150.0, tipo = TipoCuenta.EFECTIVO),
-                        Cuenta(id = "2", nombre = "BANCO PRINCIPAL", saldoActual = 520.0, tipo = TipoCuenta.BANCO),
-                        Cuenta(id = "3", nombre = "CAJA FUERTE", saldoActual = 1200.0, tipo = TipoCuenta.AHORRO)
+                        Cuenta(id = "1", nombre = "EFECTIVO", saldoActual = 0.0, tipo = TipoCuenta.EFECTIVO),
+                        Cuenta(id = "2", nombre = "BANCO PRINCIPAL", saldoActual = 0.0, tipo = TipoCuenta.BANCO)
                     )
                     dao.insertarCuentas(cuentasIniciales)
                 } else {
@@ -51,11 +51,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             dao.obtenerTodasLasMetas().collect { listaMetas ->
                 metasAhorro.clear()
-                if (listaMetas.isEmpty()) {
-                    dao.insertarMeta(MetaAhorro(UUID.randomUUID().toString(), "FONDO DE EMERGENCIA", 1000.0, 250.0))
-                } else {
-                    metasAhorro.addAll(listaMetas)
-                }
+                // Sin metas predeterminadas para iniciar en blanco
+                metasAhorro.addAll(listaMetas)
             }
         }
 
