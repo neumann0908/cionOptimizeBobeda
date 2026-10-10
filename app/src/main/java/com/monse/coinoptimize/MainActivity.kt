@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -252,8 +253,8 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
             FormularioCrearDeudaDialog(
                 theme = theme,
                 onDismiss = { mostrarCrearDeuda = false },
-                onGuardar = { titulo, monto ->
-                    viewModel.agregarCuentaPorPagar(titulo, monto)
+                onGuardar = { titulo, monto, vencimiento ->
+                    viewModel.agregarCuentaPorPagar(titulo, monto, vencimiento)
                     mostrarCrearDeuda = false
                 }
             )
@@ -750,14 +751,14 @@ fun GraficoIngresosVsGastosCard(ingresos: Double, gastos: Double, theme: AppThem
                 modifier = Modifier.fillMaxWidth().height(130.dp).border(2.dp, theme.borderBlack).background(theme.screenBg).padding(12.dp)
             ) {
                 Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.Bottom) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom, modifier = Modifier.fillMaxHeight()) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Alignment.Bottom, modifier = Modifier.fillMaxHeight()) {
                         Text(text = "$${String.format("%.2f", ingresos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(modifier = Modifier.width(40.dp).fillMaxHeight(fraction = pctIngresos).background(theme.borderBlack))
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(text = "INGRESOS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = theme.textMuted)
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom, modifier = Modifier.fillMaxHeight()) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Alignment.Bottom, modifier = Modifier.fillMaxHeight()) {
                         Text(text = "$${String.format("%.2f", gastos)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(modifier = Modifier.width(40.dp).fillMaxHeight(fraction = pctGastos).background(theme.borderBlack))
@@ -1105,7 +1106,7 @@ fun PantallaAjustesContent(
 }
 
 @Composable
-fun FormularioCrearDeudaDialog(theme: AppThemeColors, onDismiss: () -> Unit, onGuardar: (String, Double) -> Unit) {
+fun FormularioCrearDeudaDialog(theme: AppThemeColors, onDismiss: () -> Unit, onGuardar: (String, Double, String) -> Unit) {
     var titulo by remember { mutableStateOf("") }
     var montoText by remember { mutableStateOf("") }
     var vencimiento by remember { mutableStateOf("31 OCT 2026") }
@@ -1149,7 +1150,7 @@ fun FormularioCrearDeudaDialog(theme: AppThemeColors, onDismiss: () -> Unit, onG
                     }
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.primaryRed, contentColor = Color.White, theme = theme, onClick = {
                         val m = montoText.toDoubleOrNull() ?: 0.0
-                        if (m > 0) onGuardar(titulo, m)
+                        if (m > 0) onGuardar(titulo, m, vencimiento)
                     }) {
                         Text("GUARDAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
