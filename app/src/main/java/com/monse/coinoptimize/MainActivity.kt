@@ -1144,7 +1144,7 @@ fun FormularioCrearDeudaDialog(theme: AppThemeColors, onDismiss: () -> Unit, onG
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.cardBg, contentColor = theme.textDark, theme = theme, onClick = onDismiss) {
                         Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
@@ -1186,7 +1186,8 @@ fun FormularioAbonarDeudaDialog(deuda: CuentaPorPagar, cuentas: List<Cuenta>, th
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     cuentas.forEach { c ->
                         val sel = c.id == cuentaIdSeleccionada
@@ -1204,7 +1205,11 @@ fun FormularioAbonarDeudaDialog(deuda: CuentaPorPagar, cuentas: List<Cuenta>, th
                     }
                 }
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.cardBg, contentColor = theme.textDark, theme = theme, onClick = onDismiss) {
                         Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
@@ -1261,7 +1266,8 @@ fun FormularioMovimientoDialog(tipo: TipoMovimiento, esFijoInicial: Boolean, cue
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     cuentas.forEach { c ->
                         val sel = c.id == cuentaIdSeleccionada
@@ -1279,7 +1285,11 @@ fun FormularioMovimientoDialog(tipo: TipoMovimiento, esFijoInicial: Boolean, cue
                     }
                 }
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.cardBg, contentColor = theme.textDark, theme = theme, onClick = onDismiss) {
                         Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
@@ -1321,7 +1331,7 @@ fun FormularioTransferenciaDialog(cuentas: List<Cuenta>, theme: AppThemeColors, 
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.cardBg, contentColor = theme.textDark, theme = theme, onClick = onDismiss) {
                         Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
@@ -1370,7 +1380,7 @@ fun FormularioCrearMetaDialog(theme: AppThemeColors, onDismiss: () -> Unit, onGu
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.cardBg, contentColor = theme.textDark, theme = theme, onClick = onDismiss) {
                         Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
@@ -1408,7 +1418,7 @@ fun FormularioAbonarMetaDialog(meta: MetaAhorro, cuentas: List<Cuenta>, theme: A
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.cardBg, contentColor = theme.textDark, theme = theme, onClick = onDismiss) {
                         Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
