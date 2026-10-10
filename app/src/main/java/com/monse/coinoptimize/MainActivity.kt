@@ -455,7 +455,7 @@ fun PantallaInicioContent(
         }
     }
 
-    // ACCIONES RÁPIDAS EN INICIO (INGRESOS, PAGOS Y CUENTAS POR PAGAR)
+    // ACCIONES RÁPIDAS EN INICIO
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
