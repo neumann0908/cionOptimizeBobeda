@@ -1183,14 +1183,22 @@ fun FormularioAbonarDeudaDialog(deuda: CuentaPorPagar, cuentas: List<Cuenta>, th
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(text = "ORIGEN DEL DINERO:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    cuentas.forEach { c ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    cuentas.forEachIndexed { index, c ->
                         val sel = c.id == cuentaIdSeleccionada
                         Box(
-                            modifier = Modifier.weight(1f).background(if (sel) theme.primaryRed else theme.cardBg).border(1.5.dp, theme.borderBlack).clickable { cuentaIdSeleccionada = c.id }.padding(vertical = 6.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(if (sel) theme.primaryRed else theme.cardBg)
+                                .border(1.5.dp, theme.borderBlack)
+                                .clickable { cuentaIdSeleccionada = c.id }
+                                .padding(vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else theme.textDark)
+                        }
+                        if (index < cuentas.size - 1) {
+                            Spacer(modifier = Modifier.width(6.dp))
                         }
                     }
                 }
@@ -1248,14 +1256,22 @@ fun FormularioMovimientoDialog(tipo: TipoMovimiento, esFijoInicial: Boolean, cue
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(text = "CUENTA:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    cuentas.forEach { c ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    cuentas.forEachIndexed { index, c ->
                         val sel = c.id == cuentaIdSeleccionada
                         Box(
-                            modifier = Modifier.weight(1f).background(if (sel) theme.headerBg else theme.cardBg).border(1.5.dp, theme.borderBlack).clickable { cuentaIdSeleccionada = c.id }.padding(vertical = 6.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(if (sel) theme.headerBg else theme.cardBg)
+                                .border(1.5.dp, theme.borderBlack)
+                                .clickable { cuentaIdSeleccionada = c.id }
+                                .padding(vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else theme.textDark)
+                        }
+                        if (index < cuentas.size - 1) {
+                            Spacer(modifier = Modifier.width(6.dp))
                         }
                     }
                 }
