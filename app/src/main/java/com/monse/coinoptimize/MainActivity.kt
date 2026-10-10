@@ -1183,8 +1183,12 @@ fun FormularioAbonarDeudaDialog(deuda: CuentaPorPagar, cuentas: List<Cuenta>, th
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(text = "ORIGEN DEL DINERO:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    cuentas.forEachIndexed { index, c ->
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    cuentas.forEach { c ->
                         val sel = c.id == cuentaIdSeleccionada
                         Box(
                             modifier = Modifier
@@ -1197,11 +1201,9 @@ fun FormularioAbonarDeudaDialog(deuda: CuentaPorPagar, cuentas: List<Cuenta>, th
                         ) {
                             Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else theme.textDark)
                         }
-                        if (index < cuentas.size - 1) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
                     }
                 }
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.cardBg, contentColor = theme.textDark, theme = theme, onClick = onDismiss) {
                         Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -1256,8 +1258,12 @@ fun FormularioMovimientoDialog(tipo: TipoMovimiento, esFijoInicial: Boolean, cue
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(text = "CUENTA:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    cuentas.forEachIndexed { index, c ->
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    cuentas.forEach { c ->
                         val sel = c.id == cuentaIdSeleccionada
                         Box(
                             modifier = Modifier
@@ -1270,11 +1276,9 @@ fun FormularioMovimientoDialog(tipo: TipoMovimiento, esFijoInicial: Boolean, cue
                         ) {
                             Text(c.nombre, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (sel) Color.White else theme.textDark)
                         }
-                        if (index < cuentas.size - 1) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
                     }
                 }
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     NeoBrutalButton(modifier = Modifier.weight(1f), containerColor = theme.cardBg, contentColor = theme.textDark, theme = theme, onClick = onDismiss) {
                         Text("CANCELAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
