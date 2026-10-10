@@ -111,6 +111,9 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
     var metaAAbonar by remember { mutableStateOf<MetaAhorro?>(null) }
     var deudaAAbonar by remember { mutableStateOf<CuentaPorPagar?>(null) }
 
+    // Estado para detalles de las tarjetas de ahorros
+    var detalleAhorrosModal by remember { mutableStateOf<String?>(null) }
+
     Surface(modifier = Modifier.fillMaxSize(), color = theme.screenBg) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopHeaderBar(
@@ -139,7 +142,8 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                             tipoMovimientoForm = tipo
                             esFijoForm = fijo
                             mostrarFormulario = true
-                        }
+                        },
+                        onSeleccionarMovimiento = { movimientoSeleccionado = it }
                     )
                     "MOVIMIENTOS" -> PantallaCentroOperacionesContent(
                         viewModel = viewModel,
@@ -167,7 +171,8 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                         viewModel = viewModel,
                         theme = theme,
                         onCrearMeta = { mostrarCrearMeta = true },
-                        onAbonar = { metaAAbonar = it }
+                        onAbonar = { metaAAbonar = it },
+                        onVerDetalle = { detalleAhorrosModal = it }
                     )
                     "AJUSTES" -> PantallaAjustesContent(
                         viewModel = viewModel,
@@ -190,6 +195,11 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
                     subSeccionMovimientos = "MENU"
                 }
             )
+        }
+
+        // Modales y Diálogos
+        detalleAhorrosModal?.let { tipoDetalle ->
+            ModalDetalleAhorros(tipo = tipoDetalle, metas = viewModel.metasAhorro, theme = theme, onDismiss = { detalleAhorrosModal = null })
         }
 
         if (mostrarFormulario) {
@@ -284,7 +294,7 @@ fun TopHeaderBar(seccionActual: String, mesActual: String, theme: AppThemeColors
         modifier = Modifier
             .fillMaxWidth()
             .background(theme.headerBg)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -297,10 +307,10 @@ fun TopHeaderBar(seccionActual: String, mesActual: String, theme: AppThemeColors
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = Icons.Default.Lock,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
             Spacer(modifier = Modifier.width(10.dp))
@@ -321,44 +331,21 @@ fun TopHeaderBar(seccionActual: String, mesActual: String, theme: AppThemeColors
             }
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .background(theme.primaryRed)
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = when (seccionActual) {
-                        "AHORROS" -> "METAS Y PROGRESO"
-                        "AJUSTES" -> "CONFIGURACIÓN"
-                        else -> mesActual
-                    },
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = { },
-                colors = ButtonDefaults.buttonColors(containerColor = theme.primaryRed),
-                shape = RoundedCornerShape(0.dp),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ExitToApp,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "SALIR",
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+        Box(
+            modifier = Modifier
+                .background(theme.primaryRed)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = when (seccionActual) {
+                    "AHORROS" -> "METAS Y PROGRESO"
+                    "AJUSTES" -> "CONFIGURACIÓN"
+                    else -> mesActual
+                },
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -368,7 +355,8 @@ fun PantallaInicioContent(
     viewModel: MainViewModel,
     theme: AppThemeColors,
     onIrAjustes: () -> Unit,
-    onAbrirFormulario: (TipoMovimiento, Boolean) -> Unit
+    onAbrirFormulario: (TipoMovimiento, Boolean) -> Unit,
+    onSeleccionarMovimiento: (Movimiento) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -376,9 +364,7 @@ fun PantallaInicioContent(
     ) {
         NeoBrutalCard(theme = theme, modifier = Modifier.weight(1f)) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
@@ -392,9 +378,7 @@ fun PantallaInicioContent(
         }
         NeoBrutalCard(theme = theme, modifier = Modifier.weight(1f)) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
@@ -410,9 +394,7 @@ fun PantallaInicioContent(
 
     NeoBrutalCard(theme = theme) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -434,10 +416,7 @@ fun PantallaInicioContent(
             ) {
                 Text(text = "PRESUPUESTO MENSUAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
                 Box(
-                    modifier = Modifier
-                        .border(1.5.dp, theme.borderBlack)
-                        .background(theme.cardBg)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                    modifier = Modifier.border(1.5.dp, theme.borderBlack).background(theme.cardBg).padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = if (viewModel.presupuestoMensual > 0) "$${String.format("%.0f", viewModel.presupuestoMensual)}" else "SIN LÍMITE",
@@ -453,24 +432,12 @@ fun PantallaInicioContent(
             val progreso = if (presupuesto > 0) (gastado / presupuesto).toFloat().coerceIn(0f, 1f) else 0f
 
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(16.dp)
-                    .background(Color(0xFF333333))
-                    .border(1.dp, theme.borderBlack)
+                modifier = Modifier.fillMaxWidth().height(16.dp).background(Color(0xFF333333)).border(1.dp, theme.borderBlack)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(fraction = progreso)
-                        .background(theme.primaryRed)
-                )
+                Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction = progreso).background(theme.primaryRed))
             }
             Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(text = "GASTADO $${String.format("%.2f", gastado)}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = theme.textMuted)
                 Text(
                     text = "CONFIGURA EN AJUSTES",
@@ -483,10 +450,7 @@ fun PantallaInicioContent(
         }
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         NeoBrutalButton(
             modifier = Modifier.weight(1f),
             containerColor = theme.primaryRed,
@@ -507,17 +471,21 @@ fun PantallaInicioContent(
         }
     }
 
-    Text(text = "PRÓXIMOS VENCIMIENTOS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
-    DashedContainer(theme = theme) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            IconBox3D(icon = Icons.Default.DateRange, theme = theme, size = 54.dp, iconSize = 32.dp)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "SIN VENCIMIENTOS", fontSize = 16.sp, fontWeight = FontWeight.Black, color = theme.textDark)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "No tienes pagos fijos ni cuentas por pagar próximas este mes.", fontSize = 12.sp, color = theme.textMuted, textAlign = TextAlign.Center)
+    // Listado de últimos movimientos registrados en la pantalla de inicio
+    Text(text = "ÚLTIMOS MOVIMIENTOS Y PAGOS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
+    if (viewModel.movimientos.isEmpty()) {
+        DashedContainer(theme = theme) {
+            Column(modifier = Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "SIN REGISTROS RECIENTES", fontSize = 13.sp, fontWeight = FontWeight.Black, color = theme.textDark)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = "Tus ingresos extra y pagos aparecerán aquí.", fontSize = 11.sp, color = theme.textMuted)
+            }
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            viewModel.movimientos.takeLast(10).reversed().forEach { mov ->
+                ItemMovimientoCard(movimiento = mov, theme = theme, onClick = { onSeleccionarMovimiento(mov) })
+            }
         }
     }
 }
@@ -821,16 +789,23 @@ fun PantallaAhorrosContent(
     viewModel: MainViewModel,
     theme: AppThemeColors,
     onCrearMeta: () -> Unit,
-    onAbonar: (MetaAhorro) -> Unit
+    onAbonar: (MetaAhorro) -> Unit,
+    onVerDetalle: (String) -> Unit
 ) {
     val totalAhorrado = viewModel.metasAhorro.sumOf { it.montoActual }
     val completadas = viewModel.metasAhorro.count { it.montoObjetivo > 0 && it.montoActual >= it.montoObjetivo }
     val activas = viewModel.metasAhorro.count { it.montoObjetivo > 0 && it.montoActual < it.montoObjetivo }
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        MetricMiniCard(modifier = Modifier.weight(1f), title = "TOTAL AHORRADO", value = "$${String.format("%.2f", totalAhorrado)}", icon = Icons.Default.AccountBalanceWallet, iconBg = theme.primaryRed, iconTint = Color.White, theme = theme)
-        MetricMiniCard(modifier = Modifier.weight(1f), title = "COMPLETADAS", value = "$completadas", icon = Icons.Default.Adjust, iconBg = Color(0xFF2E7D32), iconTint = Color.White, theme = theme)
-        MetricMiniCard(modifier = Modifier.weight(1f), title = "ACTIVAS", value = "$activas", icon = Icons.Default.TrendingUp, iconBg = theme.iconBoxBg, iconTint = theme.textDark, theme = theme)
+        Box(modifier = Modifier.weight(1f).clickable { onVerDetalle("TOTAL") }) {
+            MetricMiniCard(modifier = Modifier.fillMaxWidth(), title = "TOTAL AHORRADO", value = "$${String.format("%.2f", totalAhorrado)}", icon = Icons.Default.AccountBalanceWallet, iconBg = theme.primaryRed, iconTint = Color.White, theme = theme)
+        }
+        Box(modifier = Modifier.weight(1f).clickable { onVerDetalle("COMPLETADAS") }) {
+            MetricMiniCard(modifier = Modifier.fillMaxWidth(), title = "COMPLETADAS", value = "$completadas", icon = Icons.Default.Adjust, iconBg = Color(0xFF2E7D32), iconTint = Color.White, theme = theme)
+        }
+        Box(modifier = Modifier.weight(1f).clickable { onVerDetalle("ACTIVAS") }) {
+            MetricMiniCard(modifier = Modifier.fillMaxWidth(), title = "ACTIVAS", value = "$activas", icon = Icons.Default.TrendingUp, iconBg = theme.iconBoxBg, iconTint = theme.textDark, theme = theme)
+        }
     }
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -878,6 +853,53 @@ fun PantallaAhorrosContent(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+// Modal detallado al hacer clic en las casillas superiores de Ahorros
+@Composable
+fun ModalDetalleAhorros(tipo: String, metas: List<MetaAhorro>, theme: AppThemeColors, onDismiss: () -> Unit) {
+    val tituloModal = when (tipo) {
+        "TOTAL" -> "DETALLE - TOTAL AHORRADO"
+        "COMPLETADAS" -> "DETALLE - METAS COMPLETADAS"
+        else -> "DETALLE - METAS ACTIVAS"
+    }
+
+    val listaFiltrada = when (tipo) {
+        "TOTAL" -> metas
+        "COMPLETADAS" -> metas.filter { it.montoObjetivo > 0 && it.montoActual >= it.montoObjetivo }
+        else -> metas.filter { it.montoObjetivo > 0 && it.montoActual < it.montoObjetivo }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box {
+            Box(modifier = Modifier.matchParentSize().offset(x = 6.dp, y = 6.dp).background(theme.borderBlack))
+            Column(
+                modifier = Modifier.fillMaxWidth().background(theme.screenBg).border(3.dp, theme.borderBlack).padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(text = tituloModal, fontSize = 15.sp, fontWeight = FontWeight.Black, color = theme.textDark)
+                
+                if (listaFiltrada.isEmpty()) {
+                    Text(text = "No hay registros en esta categoría.", fontSize = 12.sp, color = theme.textMuted)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState())) {
+                        listaFiltrada.takeLast(10).reversed().forEach { meta ->
+                            Box(modifier = Modifier.fillMaxWidth().background(theme.cardBg).border(1.5.dp, theme.borderBlack).padding(10.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(text = meta.titulo, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
+                                    Text(text = "$${String.format("%.2f", meta.montoActual)}", fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color(0xFF2E7D32))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                NeoBrutalButton(modifier = Modifier.fillMaxWidth(), containerColor = theme.primaryRed, contentColor = Color.White, theme = theme, onClick = onDismiss) {
+                    Text(text = "CERRAR", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
