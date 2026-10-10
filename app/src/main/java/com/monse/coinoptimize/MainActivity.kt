@@ -111,7 +111,6 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
     var metaAAbonar by remember { mutableStateOf<MetaAhorro?>(null) }
     var deudaAAbonar by remember { mutableStateOf<CuentaPorPagar?>(null) }
 
-    // Estado para detalles de las tarjetas de ahorros
     var detalleAhorrosModal by remember { mutableStateOf<String?>(null) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = theme.screenBg) {
@@ -197,7 +196,6 @@ fun CajaFuerteMainScreen(viewModel: MainViewModel) {
             )
         }
 
-        // Modales y Diálogos
         detalleAhorrosModal?.let { tipoDetalle ->
             ModalDetalleAhorros(tipo = tipoDetalle, metas = viewModel.metasAhorro, theme = theme, onDismiss = { detalleAhorrosModal = null })
         }
@@ -450,20 +448,36 @@ fun PantallaInicioContent(
         }
     }
 
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    // ACCIONES RÁPIDAS EN DOS FILAS (INGRESO FIJO, INGRESO EXTRA Y REGISTRAR PAGO)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            NeoBrutalButton(
+                modifier = Modifier.weight(1f),
+                containerColor = Color(0xFF2E7D32),
+                contentColor = Color.White,
+                theme = theme,
+                onClick = { onAbrirFormulario(TipoMovimiento.INGRESO, true) }
+            ) {
+                Text(text = "+ INGRESO FIJO", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            }
+            NeoBrutalButton(
+                modifier = Modifier.weight(1f),
+                containerColor = Color(0xFF1B5E20),
+                contentColor = Color.White,
+                theme = theme,
+                onClick = { onAbrirFormulario(TipoMovimiento.INGRESO, false) }
+            ) {
+                Text(text = "+ INGRESO EXTRA", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            }
+        }
+
         NeoBrutalButton(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             containerColor = theme.primaryRed,
             contentColor = Color.White,
-            theme = theme,
-            onClick = { onAbrirFormulario(TipoMovimiento.INGRESO, false) }
-        ) {
-            Text(text = "+ INGRESO EXTRA", fontSize = 11.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        }
-        NeoBrutalButton(
-            modifier = Modifier.weight(1f),
-            containerColor = theme.cardBg,
-            contentColor = theme.textDark,
             theme = theme,
             onClick = { onAbrirFormulario(TipoMovimiento.GASTO, false) }
         ) {
@@ -471,14 +485,13 @@ fun PantallaInicioContent(
         }
     }
 
-    // Listado de últimos movimientos registrados en la pantalla de inicio
     Text(text = "ÚLTIMOS MOVIMIENTOS Y PAGOS", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = theme.textDark)
     if (viewModel.movimientos.isEmpty()) {
         DashedContainer(theme = theme) {
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = "SIN REGISTROS RECIENTES", fontSize = 13.sp, fontWeight = FontWeight.Black, color = theme.textDark)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "Tus ingresos extra y pagos aparecerán aquí.", fontSize = 11.sp, color = theme.textMuted)
+                Text(text = "Tus ingresos y pagos aparecerán aquí.", fontSize = 11.sp, color = theme.textMuted)
             }
         }
     } else {
@@ -859,7 +872,6 @@ fun PantallaAhorrosContent(
     }
 }
 
-// Modal detallado al hacer clic en las casillas superiores de Ahorros
 @Composable
 fun ModalDetalleAhorros(tipo: String, metas: List<MetaAhorro>, theme: AppThemeColors, onDismiss: () -> Unit) {
     val tituloModal = when (tipo) {
